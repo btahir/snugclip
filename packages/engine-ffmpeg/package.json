@@ -1,0 +1,32 @@
+{
+  "name": "@snugclip/engine-ffmpeg",
+  "version": "0.1.0",
+  "description": "Snugclip Engine backed by the user's installed ffmpeg/ffprobe (Node).",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --root ../.. --project engine-ffmpeg"
+  },
+  "dependencies": {
+    "@snugclip/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0"
+  }
+}

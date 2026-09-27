@@ -302,6 +302,32 @@ export function applyResult(state: FitState, step: FitStep, outcome: FitOutcome)
     return s;
   }
   s.fullAttempts += 1;
+  const usedBps = (bv * 8) / D;
+  if (fits && outcome.bytes < TUNING.acceptFill * T && s.rungIndex > 0 && usedBps < TUNING.rungUp.usedBelow * p.video.bitrate && s.fullAttempts < s.maxAttempts) {
+    // Simple content: the encoder couldn't spend the bits. Go up to the largest rung that should fit.
+    const cur = step.rung;
+    const goalBps = ((Math.floor(T * (1 - s.margin)) - s.nonVideoBytes) * 8) / D;
+    const rate = (r: Rung) => r.width * r.height * r.fps;
+    let to = s.rungIndex - 1;
+    for (let i = s.rungIndex - 1; i >= 0; i--) {
+      const r = s.plan.rungs[i]!;
+      if (usedBps * (rate(r) / rate(cur)) ** TUNING.rungUp.pixelExponent <= goalBps) to = i;
+      else break;
+    }
+    const up = s.plan.rungs[to]!;
+    s.rungIndex = to;
+    s.history = [];
+    s.nextBitrate = Math.floor(Math.min(goalBps, ceilingFor(s, up)));
+    attempt.note = `fits at ${Math.floor((outcome.bytes / T) * 1000) / 10}% but the encoder used only ${Math.round((usedBps / p.video.bitrate) * 100)}% of the bits; simple content, trying ${up.width}x${up.height}`;
+    s.warnings.push({ code: 'simple-content', message: `Simple content left room to spare, so Snugclip tried a sharper ${up.width}x${up.height}.` });
+    return s;
+  }
+  if (fits && s.rungIndex === 0 && usedBps < TUNING.rungUp.usedBelow * p.video.bitrate) {
+    // Already at the sharpest rung and the encoder can't spend more bits: asking again won't help.
+    attempt.note = `fits at ${Math.floor((outcome.bytes / T) * 1000) / 10}%; simple content needs no more bits`;
+    s.phase = 'done';
+    return s;
+  }
   if (fits && (outcome.bytes >= TUNING.acceptFill * T || s.capped)) {
     s.phase = 'done';
     return s;

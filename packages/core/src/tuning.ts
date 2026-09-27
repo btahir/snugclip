@@ -52,6 +52,13 @@ export const TUNING = {
   floorSlope: 0.3,
   floorOvershootFactor: 1.5,
   measuredMinPad: 1.05,
+  /**
+   * Extension (not in PLAN): simple content (screen recordings) leaves most of the budget unused
+   * at the ladder's rung. When an attempt fits, lands under acceptFill·T and the encoder used less
+   * than `usedBelow` of the requested bitrate, jump up to the largest rung whose estimated bitrate
+   * (measured × pixel-rate ratio ^ pixelExponent) still fits the budget.
+   */
+  rungUp: { usedBelow: 0.5, pixelExponent: 0.9 },
 
   maxAttempts: { twoPass: 3, onePass: 4, limit: 8 },
   stallMs: { web: 20_000, ffmpeg: 60_000 },

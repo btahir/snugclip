@@ -1,0 +1,83 @@
+{
+ "streams": [
+  {
+   "index": 0,
+   "codec_name": "mpeg2video",
+   "profile": "Main",
+   "codec_type": "video",
+   "codec_tag_string": "[0][0][0][0]",
+   "codec_tag": "0x0000",
+   "width": 320,
+   "height": 240,
+   "coded_width": 0,
+   "coded_height": 0,
+   "has_b_frames": 1,
+   "sample_aspect_ratio": "1:1",
+   "display_aspect_ratio": "4:3",
+   "pix_fmt": "yuv420p",
+   "level": 8,
+   "color_range": "tv",
+   "chroma_location": "left",
+   "field_order": "progressive",
+   "id": "0x1e0",
+   "r_frame_rate": "25/1",
+   "avg_frame_rate": "25/1",
+   "time_base": "1/90000",
+   "start_pts": 48600,
+   "start_time": "0.540000",
+   "duration_ts": 180000,
+   "duration": "2.000000",
+   "disposition": {
+    "attached_pic": 0
+   },
+   "side_data_list": [
+    {
+     "side_data_type": "CPB properties",
+     "max_bitrate": 0,
+     "min_bitrate": 0,
+     "avg_bitrate": 0,
+     "buffer_size": 163840,
+     "vbv_delay": -1
+    }
+   ]
+  },
+  {
+   "index": 1,
+   "codec_name": "mp2",
+   "codec_type": "audio",
+   "codec_tag_string": "[0][0][0][0]",
+   "codec_tag": "0x0000",
+   "mime_codec_string": "mp4a.40.33",
+   "sample_fmt": "s16p",
+   "sample_rate": "48000",
+   "channels": 1,
+   "channel_layout": "mono",
+   "bits_per_sample": 0,
+   "initial_padding": 0,
+   "id": "0x1c0",
+   "r_frame_rate": "0/0",
+   "avg_frame_rate": "0/0",
+   "time_base": "1/90000",
+   "start_pts": 47698,
+   "start_time": "0.529978",
+   "duration_ts": 174960,
+   "duration": "1.944000",
+   "bit_rate": "128000",
+   "disposition": {
+    "attached_pic": 0
+   }
+  }
+ ],
+ "format": {
+  "nb_streams": 2,
+  "nb_programs": 0,
+  "nb_stream_groups": 0,
+  "format_name": "mpeg",
+  "format_long_name": "MPEG-PS (MPEG-2 Program Stream)",
+  "start_time": "0.529978",
+  "duration": "2.010022",
+  "size": "288768",
+  "bit_rate": "1149312",
+  "probe_score": 26
+ }
+}

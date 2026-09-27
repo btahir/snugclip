@@ -116,6 +116,17 @@ describe('fit loop', () => {
     expect(r.engine.discarded).toContain(1);
     invariants(r);
   });
+  it('simple content (screen recording): jumps up to a sharper rung, then stops asking for bits', async () => {
+    const r = await run({ contentBpp: 0.005, splitBytes: true });
+    expect(r.report.status).toBe('fit');
+    const f = full(r.report);
+    expect(f[0]!.rung.width).toBe(854);
+    expect(f.at(-1)!.rung).toMatchObject({ width: 1920, height: 1080 });
+    expect(f.length).toBe(2);
+    expect(r.report.warnings.map((w) => w.code)).toContain('simple-content');
+    expect(r.report.output!.video).toMatchObject({ width: 1920, height: 1080 });
+    invariants(r);
+  });
   it('calibrates one-pass engines (median ratio) and reports complexity', async () => {
     const r = await run({ ratio: 1.3 }, { caps: webCaps() });
     const cal = r.report.attempts.filter((a) => a.purpose === 'calibration');

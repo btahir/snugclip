@@ -1,0 +1,53 @@
+{
+ "streams": [
+  {
+   "index": 0,
+   "codec_name": "aac",
+   "profile": "LC",
+   "codec_type": "audio",
+   "codec_tag_string": "mp4a",
+   "codec_tag": "0x6134706d",
+   "mime_codec_string": "mp4a.40.2",
+   "sample_fmt": "fltp",
+   "sample_rate": "48000",
+   "channels": 2,
+   "channel_layout": "stereo",
+   "bits_per_sample": 0,
+   "initial_padding": 0,
+   "id": "0x1",
+   "r_frame_rate": "0/0",
+   "avg_frame_rate": "0/0",
+   "time_base": "1/48000",
+   "start_pts": 0,
+   "start_time": "0.000000",
+   "duration_ts": 240000,
+   "duration": "5.000000",
+   "bit_rate": "96135",
+   "nb_frames": "236",
+   "disposition": {
+    "attached_pic": 0
+   },
+   "tags": {
+    "language": "und",
+    "handler_name": "SoundHandler"
+   }
+  }
+ ],
+ "format": {
+  "nb_streams": 1,
+  "nb_programs": 0,
+  "nb_stream_groups": 0,
+  "format_name": "mov,mp4,m4a,3gp,3g2,mj2",
+  "format_long_name": "QuickTime / MOV",
+  "start_time": "0.000000",
+  "duration": "5.000000",
+  "size": "62055",
+  "bit_rate": "99288",
+  "probe_score": 100,
+  "tags": {
+   "major_brand": "M4A ",
+   "minor_version": "512",
+   "compatible_brands": "M4A isomiso2"
+  }
+ }
+}
