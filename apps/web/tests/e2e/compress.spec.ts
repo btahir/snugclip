@@ -115,3 +115,71 @@ test('setup export and import round-trip', async ({ page }) => {
   await expect(page.getByTestId('must-fit')).toHaveText('Must fit under 12 MB');
   await expect(page.getByText('muted · up to 480p').first()).toBeVisible();
 });
+
+test('pause holds progress; resume finishes under the target', async ({ page }) => {
+  await page.goto('/?size=5MB&mute=1');
+  await ready(page);
+  await drop(page, [fx('f14-perf-1080p30-60s.mp4')]);
+  const pause = page.getByRole('button', { name: /^Pause f14/ });
+  await expect(pause).toBeVisible({ timeout: 60_000 });
+  await pause.click();
+  await expect(page.locator('[data-state="paused"]')).toBeVisible();
+  const read = () => page.locator('[role="progressbar"]').getAttribute('aria-valuenow');
+  const a = await read();
+  await page.waitForTimeout(3000);
+  expect(await read()).toBe(a);
+  await page.getByRole('button', { name: /^Resume f14/ }).click();
+  await expect(page.locator('[data-state="review"]')).toBeVisible({ timeout: 200_000 });
+  const [it] = await items(page);
+  expect(it!.report!.output.bytes).toBeLessThanOrEqual(5_000_000);
+});
+
+test('batch of 5 all fit and "Download all" zips them', async ({ page }) => {
+  await page.goto('/?size=2MB');
+  await ready(page);
+  const files = ['f01-testsrc2-1080p30-10s.mp4', 'f03-screen-1080p30-30s.mp4', 'f07-portrait-720x1280-5s.mp4', 'f09-vp9-720p30-10s.webm', 'f10-noaudio-720p30-10s.mp4'];
+  await drop(page, files.map(fx));
+  await expect.poll(async () => (await items(page)).filter((i) => i.status === 'ready').length, { timeout: 200_000 }).toBe(5);
+  const all = await items(page);
+  for (const i of all) expect(i.report!.output.bytes, i.name).toBeLessThanOrEqual(2_000_000);
+  const dl = page.waitForEvent('download');
+  await page.getByTestId('download-all').click();
+  const d = await dl;
+  expect(d.suggestedFilename()).toBe('snugclip-2MB.zip');
+  const zip = readFileSync(await d.path());
+  // Count local file headers (PK\x03\x04).
+  let n = 0;
+  for (let i = zip.indexOf('PK\x03\x04'); i !== -1; i = zip.indexOf('PK\x03\x04', i + 4)) n++;
+  expect(n).toBe(5);
+});
+
+test('trim a refused clip until it fits, then it compresses', async ({ page }) => {
+  await page.goto('/?size=1MB&mute=1');
+  await ready(page);
+  await drop(page, [fx('f11-long-360p30-300s.mp4')]);
+  const strip = page.getByTestId('impossible');
+  await strip.getByRole('button', { name: 'Trim' }).click();
+  const end = page.getByRole('slider', { name: 'Trim end' });
+  await end.focus();
+  for (let i = 0; i < 20; i++) await page.keyboard.press('Shift+ArrowLeft'); // 300 s → 280 s … step 1 s
+  await page.keyboard.press('Home'); // end → start + 0.5 s
+  for (let i = 0; i < 60; i++) await page.keyboard.press('Shift+ArrowRight'); // ≈ 60 s long
+  await expect(page.getByText('Now it fits')).toBeVisible();
+  await page.getByRole('button', { name: 'Done' }).click();
+  await expect(page.locator('[data-state="review"]')).toBeVisible({ timeout: 120_000 });
+  const [it] = await items(page);
+  expect(it!.report!.output.bytes).toBeLessThanOrEqual(2_000_000);
+  expect(it!.report!.output.durationSec).toBeGreaterThan(55);
+  expect(it!.report!.output.durationSec).toBeLessThan(65);
+});
+
+test('tight budget with sound (AAC below 48 kbps) still fits', async ({ page }) => {
+  // Currently red: engine-web real encodes fail for AAC < 48 kbps (logged for builder A).
+  await page.goto('/?size=450KB');
+  await ready(page);
+  await drop(page, [fx('f01-testsrc2-1080p30-10s.mp4')]);
+  await expect.poll(async () => (await items(page))[0]?.status, { timeout: 120_000 }).toMatch(/ready|error/);
+  const [it] = await items(page);
+  expect(it!.report?.error?.message ?? '').toBe('');
+  expect(it!.report!.output.bytes).toBeLessThanOrEqual(450_000);
+});

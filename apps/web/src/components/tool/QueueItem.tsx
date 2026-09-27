@@ -303,6 +303,12 @@ export function QueueItem({ it, isNext }: { it: Item; isNext: boolean }) {
                   {t.item.retry}
                 </button>
               )}
+              {e?.code === 'E_ENCODE' && it.probe?.audio && !(it.overrides?.mute ?? state.options.mute) && (
+                <button type="button" className="btn sm" onClick={() => tool.retry(it.id, { mute: true })}>
+                  <Icon name="mute" size={16} />
+                  {t.item.retryMuted}
+                </button>
+              )}
               <a className="btn sm quiet" href="/about/#formats">
                 {t.errors.whatWorks}
               </a>

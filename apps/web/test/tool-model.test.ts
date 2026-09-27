@@ -119,3 +119,15 @@ describe('file detection', () => {
     expect(isJobFile(new File([], 'data.json'))).toBe(false);
   });
 });
+
+describe('capsFromWire', () => {
+  it('rebuilds canEncode and canEncodeAudio from the wire table', async () => {
+    const { capsFromWire } = await import('@/lib/tool-model');
+    const { canEncode: _c, ...wire } = TYPICAL_WEB_CAPS;
+    const caps = capsFromWire({ ...wire, maxEncodeShortSide: { h264: 1080 }, audioOk: ['aac:48000:1:48000'] });
+    expect(caps.canEncode('h264', 1920, 1080, 1e6)).toBe(true);
+    expect(caps.canEncode('h264', 3840, 2160, 1e6)).toBe(false);
+    expect(caps.canEncodeAudio!('aac', 48000, 1, 48000)).toBe(true);
+    expect(caps.canEncodeAudio!('aac', 24000, 1, 48000)).toBe(false);
+  });
+});

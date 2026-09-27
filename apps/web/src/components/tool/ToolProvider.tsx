@@ -559,6 +559,7 @@ export function ToolProvider({ children, initialTarget }: { children: ReactNode;
     (window as unknown as { __snugclip?: unknown }).__snugclip = {
       state: () => stateRef.current,
       engine: init?.engine,
+      reason: init?.reason,
     };
   }, [init]);
 

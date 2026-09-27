@@ -132,9 +132,12 @@ export function coreOptions(base: UiOptions, trim?: TrimRange, overrides?: Parti
 
 /** Rebuilds a synchronous canEncode from wire capabilities (the worker keeps the real one). */
 export function capsFromWire(w: WireCaps): EngineCapabilities {
+  const { audioOk, ...rest } = w;
+  const ok = audioOk ? new Set(audioOk) : null;
   return {
-    ...w,
+    ...rest,
     canEncode: (codec, width, height) => w.videoCodecs.includes(codec) && Math.min(width, height) <= (w.maxEncodeShortSide[codec] ?? 8640),
+    ...(ok ? { canEncodeAudio: (codec: string, bitrate: number, channels: number, sampleRate: number) => ok.has(`${codec}:${bitrate}:${channels}:${sampleRate}`) } : {}),
   };
 }
 

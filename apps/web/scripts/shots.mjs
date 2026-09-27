@@ -10,7 +10,7 @@ const args = process.argv.slice(2);
 const out = resolve(args.find((a) => !a.startsWith('--')) ?? 'test-results/shots');
 const base = args.filter((a) => !a.startsWith('--'))[1] ?? 'http://localhost:4317';
 const opt = (k, d) => (args.find((a) => a.startsWith(`--${k}=`))?.split('=')[1] ?? d).split(',');
-const only = opt('only', 'empty,queue,pages');
+const only = opt('only', 'empty,queue,options,pages');
 const themes = opt('themes', 'light,dark');
 const vps = opt('vps', 'desktop,phone');
 const FIX = resolve(new URL('../../../fixtures/generated', import.meta.url).pathname);
@@ -50,9 +50,22 @@ try {
         await page.waitForSelector('[data-state="review"]', { timeout: 180000 });
         await page.waitForTimeout(1200);
         await shot('home-review');
+        const trimBtn = page.locator('[data-state="impossible"] button', { hasText: 'Trim' });
+        await trimBtn.click();
+        await page.waitForTimeout(2500);
+        await page.locator('[data-state="impossible"]').scrollIntoViewIfNeeded();
+        await shot('home-trim', false);
+        await page.keyboard.press('Escape');
+      }
+      if (only.includes('options')) {
+        await page.goto(base + '/', { waitUntil: 'load' });
+        await page.waitForSelector('[data-support="ok"]', { timeout: 30000 });
+        await page.getByRole('button', { name: 'Options' }).first().click();
+        await page.getByRole('radio', { name: /Smaller/ }).click();
+        await shot('home-options', false);
       }
       if (only.includes('pages')) {
-        for (const p of ['compress-video-for-discord', 'support', 'about']) {
+        for (const p of ['compress-video-for-discord', 'compress-video-to-10mb', 'support', 'about']) {
           await page.goto(`${base}/${p}/`, { waitUntil: 'load' });
           await shot(p, true);
         }

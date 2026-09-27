@@ -3,7 +3,10 @@
 import type { EngineCapabilities, FitProgress, Options, Probe, Report, Target } from '@snugclip/core';
 
 /** Capabilities without the canEncode function (functions can't cross the worker boundary). */
-export type WireCaps = Omit<EngineCapabilities, 'canEncode'>;
+export type WireCaps = Omit<EngineCapabilities, 'canEncode' | 'canEncodeAudio'> & {
+  /** canEncodeAudio precomputed over the planner's audio ladder: keys `codec:bitrate:channels:sampleRate`. */
+  audioOk?: string[];
+};
 
 export type ToWorker =
   | { type: 'init'; rid: number }

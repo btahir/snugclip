@@ -24,8 +24,19 @@ function toWire(e: unknown): WireError {
 }
 
 function wireCaps(c: EngineCapabilities): WireCaps {
-  const { canEncode: _drop, ...rest } = c;
-  return rest;
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(c)) if (typeof v !== 'function') out[k] = v;
+  const wire = out as WireCaps;
+  if (c.canEncodeAudio) {
+    const ok: string[] = [];
+    for (const codec of ['aac', 'opus'] as const)
+      for (const kbps of TUNING.audioLadder[codec])
+        for (const ch of [1, 2] as const)
+          for (const sr of [44100, 48000])
+            if (c.canEncodeAudio(codec, kbps * 1000, ch, sr)) ok.push(`${codec}:${kbps * 1000}:${ch}:${sr}`);
+    wire.audioOk = ok;
+  }
+  return wire;
 }
 
 async function thumbs(file: Blob, times: number[], height: number): Promise<(Blob | null)[]> {
@@ -68,6 +79,7 @@ self.onmessage = async (ev: MessageEvent<ToWorker>) => {
         const ok = caps.videoCodecs.includes('h264') || caps.videoCodecs.includes('vp9');
         post({ type: 'init', rid: msg.rid, caps: wireCaps(caps), supported: ok, ...(ok ? {} : { reason: 'no-encoder' }), engine: `${name} ${caps.version} · ${engine.latencyMode} latency${engine.aacPolyfilled ? ' · AAC from /vendor' : ''}` });
       } catch (e) {
+        console.error('snugclip: engine init failed', e);
         post({ type: 'init', rid: msg.rid, caps: null, supported: false, reason: toWire(e).message, engine: 'none' });
       }
       return;

@@ -136,6 +136,7 @@ export const en = {
     remove: 'Remove',
     trim: 'Trim',
     retry: 'Try again',
+    retryMuted: 'Try without sound',
     expand: 'Show preview',
     collapse: 'Hide preview',
     doneSub: (size: string, quality: string | null, downloaded: boolean) =>

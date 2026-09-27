@@ -1,6 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
-import { DONATION_LINKS } from '../../src/config/site';
+import { DONATION_LINKS, SITE_URL } from '../../src/config/site';
 import { drop, fx, ready } from './helpers';
 
 const PAGES = ['/', '/compress-video-for-discord/', '/compress-video-for-whatsapp/', '/compress-video-for-email/', '/compress-video-to-10mb/', '/support/', '/about/'];
@@ -50,7 +50,7 @@ test('keyword pages are static, unique and preselect their preset', async ({ pag
   const titles = new Set<string>();
   for (const slug of ['compress-video-for-discord', 'compress-video-to-8mb', 'compress-video-for-whatsapp', 'compress-video-for-email', 'compress-mov']) {
     const html = await (await request.get(`/${slug}/`)).text();
-    expect(html).toContain(`<link rel="canonical" href="https://snugclip.vercel.app/${slug}/"/>`);
+    expect(html).toContain(`<link rel="canonical" href="${SITE_URL}/${slug}/"/>`);
     expect(html.match(/<h1[ >]/g)?.length).toBe(1);
     expect(html).toContain('"@type":"FAQPage"');
     expect(html).toContain('aria-checked="true"');
@@ -66,11 +66,11 @@ test('keyword pages are static, unique and preselect their preset', async ({ pag
 test('sitemap, robots, llms.txt and the job schema exist', async ({ request }) => {
   const sm = await (await request.get('/sitemap.xml')).text();
   expect(sm.match(/<loc>/g)?.length).toBe(15);
-  expect(await (await request.get('/robots.txt')).text()).toContain('Sitemap: https://snugclip.vercel.app/sitemap.xml');
+  expect(await (await request.get('/robots.txt')).text()).toContain(`Sitemap: ${SITE_URL}/sitemap.xml`);
   const llms = await (await request.get('/llms.txt')).text();
   for (const s of ['snugclip compress', 'compress_video', 'plan_compression', 'probe_video', 'list_presets', 'job.v1.json', 'Exit codes']) expect(llms).toContain(s);
   const schema = await (await request.get('/schema/job.v1.json')).json();
-  expect(schema.$id).toBe('https://snugclip.vercel.app/schema/job.v1.json');
+  expect(schema.$id).toBe(`${SITE_URL}/schema/job.v1.json`);
 });
 
 test('browsers without WebCodecs get the friendly message', async ({ page }) => {
