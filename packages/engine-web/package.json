@@ -1,0 +1,31 @@
+{
+  "name": "@snugclip/engine-web",
+  "version": "0.1.0",
+  "description": "Snugclip Engine for browsers: WebCodecs through mediabunny. Worker-friendly.",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --root ../.. --project engine-web"
+  },
+  "dependencies": {
+    "@mediabunny/aac-encoder": "1.60.0",
+    "@snugclip/core": "workspace:*",
+    "mediabunny": "1.60.0"
+  }
+}
