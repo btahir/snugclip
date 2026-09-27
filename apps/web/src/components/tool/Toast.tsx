@@ -1,12 +1,11 @@
 'use client';
-import { t } from '@/i18n/en';
 import { useTool } from './ToolProvider';
 
 export function ToastAndLive() {
   const { toast, announcement } = useTool();
   return (
     <>
-      <div className="sr-only" aria-live="polite" aria-atomic="true" aria-label={t.a11y.live} data-testid="live">
+      <div className="sr-only" aria-live="polite" aria-atomic="true" data-testid="live">
         {announcement}
       </div>
       <div role="status" aria-live="polite">

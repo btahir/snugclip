@@ -110,7 +110,7 @@
 }
 
 .site-footer { margin-top: 56px; border-top: 1px solid var(--sn-line); padding: 48px 0 40px; color: var(--sn-ink-3); font-size: var(--sn-text-xs); }
-.site-footer .cols { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 32px; }
+.site-footer .cols { display: grid; grid-template-columns: 1.1fr 1.4fr .8fr; gap: 32px; }
 .site-footer h2 { font: 700 var(--sn-text-xs)/1.3 var(--sn-font-ui); color: var(--sn-ink-2); margin-bottom: 10px; letter-spacing: .02em; }
 .site-footer ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
 .site-footer a { color: var(--sn-ink-3); text-decoration: none; display: inline-block; padding: 4px 0; }
@@ -157,7 +157,7 @@
 .chip .lbl small { display: block; font: 500 12px/1.35 var(--sn-font-mono); color: var(--sn-ink-3); }
 .chip .caret { margin-left: -4px; color: var(--sn-ink-3); }
 .chip[aria-checked="true"] { background: var(--sn-brand); border-color: var(--sn-brand); color: var(--sn-brand-ink); }
-.chip[aria-checked="true"] small, .chip[aria-checked="true"] .caret { color: color-mix(in oklab, var(--sn-brand-ink) 80%, transparent); }
+.chip[aria-checked="true"] small, .chip[aria-checked="true"] .caret { color: var(--sn-brand-ink); opacity: .92; }
 .chip[aria-checked="true"] .gl { background: color-mix(in oklab, var(--sn-brand-ink) 18%, transparent); color: var(--sn-brand-ink); box-shadow: none; }
 .chip.custom { border-style: dashed; border-color: var(--sn-line-2); background: transparent; }
 .chip.custom[aria-checked="true"] { border-style: solid; background: var(--sn-brand); }
@@ -295,7 +295,7 @@
 .strip { margin: 0 18px 16px; }
 .row + .strip { margin-top: -2px; }
 @media (max-width: 760px) {
-  .qbar { margin: 22px 2px 10px; } .qbar h2 { font-size: 21px; }
+  .qbar { margin: 22px 2px 10px; flex-wrap: wrap; } .qbar h2 { font-size: 21px; } .qbar .sp { display: none; } .qbar > div:first-child { flex: 1 1 100%; } .qbar .acts { flex: 1 1 100%; justify-content: flex-start; }
   .qbar .acts .desk { display: none; }
   .row { grid-template-columns: 26px minmax(0, 1fr) auto; gap: 12px; padding: 12px 14px; }
   .row .rthumb { display: none; }
@@ -343,7 +343,7 @@
 @keyframes wave { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 
 /* ---------- Review ---------- */
-.review { display: grid; grid-template-columns: minmax(0, 1fr) 300px; overflow: hidden; }
+.review { display: grid; grid-template-columns: minmax(0, 1fr) 300px; overflow: hidden; border-radius: inherit; }
 .review .left { padding: 18px; min-width: 0; }
 .review .right { background: var(--sn-surface-2); border-left: 1px solid var(--sn-line); padding: 18px 20px; display: flex; flex-direction: column; min-width: 0; }
 .review .rhead { display: flex; align-items: flex-start; gap: 8px; }
@@ -484,7 +484,7 @@
 .table-card tr:last-child td { border-bottom: 0; }
 .table-card .foot { padding: 12px 18px; font-size: 12.5px; color: var(--sn-ink-3); border-top: 1px solid var(--sn-line); background: var(--sn-surface-2); }
 .table-card .foot a { color: var(--sn-ink-2); }
-.steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 20px; list-style: none; padding: 0; }
+.steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 16px; margin-top: 20px; list-style: none; padding: 0; }
 .steps li { background: var(--sn-surface); border-radius: var(--sn-radius-lg); box-shadow: var(--sn-shadow-2); padding: 20px; }
 .steps .n { width: 36px; height: 36px; border-radius: 50%; background: var(--sn-brand-soft); color: var(--sn-brand); display: grid; place-items: center; font: 600 18px/1 var(--sn-font-display); }
 .steps h3 { margin-top: 12px; }
@@ -551,3 +551,8 @@
 .hero-glass-svg { overflow: visible; }
 .hero-glass-svg .hg-pour { animation: hg-pour 900ms var(--sn-ease-out) both; }
 @keyframes hg-pour { from { transform: translateY(180px); } to { transform: none; } }
+
+@media (min-width: 761px) { .site-footer .cols ul.two { columns: 2; column-gap: 24px; display: block; } .site-footer .cols ul.two li { break-inside: avoid; } }
+
+/* Links inside text are always underlined (not colour alone). */
+.table-card .foot a, .popover .src a, .prose a, .lede a, main p a { text-decoration: underline; text-underline-offset: 3px; }

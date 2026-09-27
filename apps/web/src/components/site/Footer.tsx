@@ -16,7 +16,7 @@ export function Footer() {
           </div>
           <div>
             <h2>{t.footer.toolPages}</h2>
-            <ul>
+            <ul className="two">
               {KEYWORD_PAGES.map((p) => (
                 <li key={p.slug}>
                   <Link href={`/${p.slug}/`}>{p.navLabel}</Link>

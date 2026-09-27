@@ -1,7 +1,7 @@
 // Large illustrative glass for landing heroes: filled just under the destination's line.
 export function HeroGlass({ label }: { label: string }) {
   return (
-    <svg className="hero-glass-svg" width="220" height="300" viewBox="0 0 220 300" role="img" aria-label={`A glass filled just under the ${label} line`}>
+    <svg className="hero-glass-svg" width="280" height="300" viewBox="0 0 280 300" role="img" aria-label={`A glass filled just under the ${label} line`}>
       <defs>
         <clipPath id="hg-in">
           <path d="M40 40h120l-10 208a26 26 0 0 1-26 24H76a26 26 0 0 1-26-24Z" />
@@ -26,7 +26,7 @@ export function HeroGlass({ label }: { label: string }) {
       ))}
       <path d="M22 88h156" stroke="var(--sn-limit)" strokeWidth="6" strokeLinecap="round" />
       <path d="M186 88l-10-7v14z" fill="var(--sn-limit)" />
-      <text x="192" y="72" textAnchor="end" fontFamily="var(--sn-font-mono)" fontWeight="600" fontSize="16" fill="var(--sn-limit-text)">
+      <text x="196" y="94" textAnchor="start" fontFamily="var(--sn-font-mono)" fontWeight="600" fontSize="16" fill="var(--sn-limit-text)">
         {label}
       </text>
     </svg>

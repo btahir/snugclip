@@ -118,7 +118,7 @@ export function TargetBar({ optionsOpen, onToggleOptions }: { optionsOpen: boole
       const k = keys[n]!;
       setFocusKey(k);
       chipRefs.current.get(k)?.focus();
-      chipRefs.current.get(k)?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+      chipRefs.current.get(k)?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
     }
   };
 

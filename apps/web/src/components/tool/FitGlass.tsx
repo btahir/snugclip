@@ -7,12 +7,14 @@ import { fillLevel } from '@/lib/tool-model';
 
 /** Where the limit line sits, as a fraction of the tube height from the bottom. */
 export const LIMIT_LINE = 0.78;
+/** CSS `top` of the limit line inside the tube. */
+const LINE_TOP = `${Math.round((1 - LIMIT_LINE) * 1000) / 10}%`;
+const pctTop = (f: number) => `${Math.round((1 - f) * 10000) / 100}%`;
 
 type GlassState = 'idle' | 'analysing' | 'encoding' | 'done' | 'warn' | 'bad';
 
 export function FitGlass({ bytes, target, settle = false }: { bytes: number; target: number; settle?: boolean }) {
   const level = fillLevel(bytes, target) * LIMIT_LINE;
-  const top = `${(1 - LIMIT_LINE) * 100}%`;
   return (
     <div className={`glass full${settle ? ' settle' : ''}`} style={{ '--level': level } as CSSProperties} aria-hidden="true">
       <div className="tube">
@@ -22,10 +24,10 @@ export function FitGlass({ bytes, target, settle = false }: { bytes: number; tar
       </div>
       <div className="ticks">
         {[0.25, 0.5, 0.75].map((f) => (
-          <i key={f} style={{ top: `${(1 - LIMIT_LINE * f) * 100}%` }} />
+          <i key={f} style={{ top: pctTop(LIMIT_LINE * f) }} />
         ))}
       </div>
-      <div className="limit" style={{ top }} />
+      <div className="limit" style={{ top: LINE_TOP }} />
     </div>
   );
 }
@@ -38,9 +40,9 @@ export function MiniGlass({ bytes = 0, target, projected, state = 'idle', settle
       {state !== 'warn' && state !== 'bad' && <div className="liq" />}
       {state === 'encoding' && level > 0.02 && <div className="wave" />}
       {projected !== undefined && state === 'encoding' && (
-        <div className="ghost" style={{ top: `${(1 - fillLevel(projected, target) * LIMIT_LINE) * 100}%` }} />
+        <div className="ghost" style={{ top: pctTop(fillLevel(projected, target) * LIMIT_LINE) }} />
       )}
-      <div className="limit" style={{ top: `${(1 - LIMIT_LINE) * 100}%` }} />
+      <div className="limit" style={{ top: LINE_TOP }} />
     </div>
   );
 }

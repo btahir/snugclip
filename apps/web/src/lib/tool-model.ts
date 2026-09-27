@@ -213,8 +213,11 @@ export function newId(): string {
 
 export const VIDEO_EXT = /\.(mp4|m4v|mov|webm|mkv|avi|wmv|flv|mpg|mpeg|ts|m2ts|3gp|3g2|ogv|qt)$/i;
 
+const AUDIO_EXT = /\.(m4a|mp3|wav|aac|flac|ogg|opus)$/i;
+
+/** Files worth probing: videos, plus audio so an audio-only file gets a clear "no video track" message. */
 export function isProbablyVideo(f: File): boolean {
-  return f.type.startsWith('video/') || VIDEO_EXT.test(f.name);
+  return f.type.startsWith('video/') || f.type.startsWith('audio/') || VIDEO_EXT.test(f.name) || AUDIO_EXT.test(f.name);
 }
 
 export function isJobFile(f: File): boolean {
