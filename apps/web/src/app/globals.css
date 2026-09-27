@@ -623,7 +623,7 @@
 .empty-glass .eg-liq { transition: transform 320ms var(--sn-ease-out); }
 
 /* Details popover / sheet (REVIEW B2) */
-.details-pop { position: fixed; z-index: 70; width: 340px; max-height: 60vh; overflow: auto; background: var(--sn-surface); border: 1px solid var(--sn-line); border-radius: var(--sn-radius-md); box-shadow: var(--sn-shadow-3); padding: 12px 16px 16px; animation: pop-in var(--sn-dur-2) var(--sn-ease-out); outline: none; }
+.details-pop { position: fixed; z-index: 70; width: 360px; max-height: calc(100vh - 24px); overflow: auto; background: var(--sn-surface); border: 1px solid var(--sn-line); border-radius: var(--sn-radius-md); box-shadow: var(--sn-shadow-3); padding: 12px 16px 16px; animation: pop-in var(--sn-dur-2) var(--sn-ease-out); outline: none; }
 .details-pop.sheet { left: 0; right: 0; bottom: 0; top: auto; width: auto; max-height: 85vh; border-radius: 22px 22px 0 0; padding: 10px 18px calc(18px + env(safe-area-inset-bottom)); animation: sheet-up var(--sn-dur-3) var(--sn-ease-out); }
 .details-pop.sheet::before { content: ""; display: block; width: 40px; height: 5px; border-radius: 9px; background: var(--sn-line-2); margin: 0 auto 8px; }
 .details-scrim { display: block !important; position: fixed; inset: 0; z-index: 69; background: color-mix(in oklab, var(--sn-scrim) 55%, transparent); }
@@ -738,3 +738,14 @@
 @media (max-width: 760px) { .site-footer .cols ul.two { columns: 2; column-gap: 16px; display: block; } .site-footer a { min-height: 44px; display: flex; align-items: center; padding: 0; } }
 /* Empty-state rhythm (REVIEW polish 5) */
 .site-footer { margin-top: 48px; }
+/* Target bar layout: the chip row gets the full width so most destinations show at once (REVIEW M2). */
+@media (min-width: 761px) {
+  .target { flex-wrap: wrap; row-gap: 12px; padding: 14px 14px 14px 22px; }
+  .target-q { order: 1; flex: 1; width: auto; }
+  .target-end { order: 2; }
+  .chips-wrap { order: 3; flex: 1 1 100%; margin: 0 -2px 0 -8px; }
+  .target-end .chip.custom, .target-end .optsbtn { height: 48px; }
+  .target-end .chip.custom .gl { width: 34px; height: 34px; }
+}
+
+@media (max-width: 760px) { .target-q { justify-content: flex-start; } }

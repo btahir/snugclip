@@ -10,7 +10,7 @@ const args = process.argv.slice(2);
 const out = resolve(args.find((a) => !a.startsWith('--')) ?? 'test-results/shots');
 const base = args.filter((a) => !a.startsWith('--'))[1] ?? 'http://localhost:4317';
 const opt = (k, d) => (args.find((a) => a.startsWith(`--${k}=`))?.split('=')[1] ?? d).split(',');
-const only = opt('only', 'empty,queue,options,pages');
+const only = opt('only', 'empty,queue,options,extra,pages');
 const themes = opt('themes', 'light,dark');
 const vps = opt('vps', 'desktop,phone');
 const FIX = resolve(new URL('../../../fixtures/generated', import.meta.url).pathname);
@@ -76,7 +76,53 @@ const errors = [];
         await page.getByRole('radio', { name: /Smaller/ }).click();
         await shot('home-options', false);
       }
+      if (only.includes('extra')) {
+        // Drag-over state
+        await page.goto(base + '/', { waitUntil: 'load' });
+        await ready();
+        await page.evaluate(() => {
+          const dt = new DataTransfer();
+          dt.items.add(new File([new Uint8Array(8)], 'clip.mp4', { type: 'video/mp4' }));
+          dt.items.add(new File([new Uint8Array(8)], 'clip2.mp4', { type: 'video/mp4' }));
+          window.dispatchEvent(new DragEvent('dragenter', { dataTransfer: dt, bubbles: true }));
+        });
+        await shot('x-dragover', false);
+        await page.evaluate(() => window.dispatchEvent(new DragEvent('drop', { dataTransfer: new DataTransfer(), bubbles: true })));
+        // Tier popover
+        await page.goto(base + '/', { waitUntil: 'load' });
+        await ready();
+        await page.locator('.chips [data-dest="discord"]').click();
+        await shot('x-tier-popover', false);
+        await page.keyboard.press('Escape');
+        // Details, after download, pass-through
+        await page.goto(base + '/?size=3MB', { waitUntil: 'load' });
+        await ready();
+        await page.setInputFiles('[data-testid="file-input"]', [`${FIX}/f01-testsrc2-1080p30-10s.mp4`]);
+        await page.waitForSelector('[data-state="review"]', { timeout: 120000 });
+        await page.waitForTimeout(900);
+        await shot('x-single-review', false);
+        await page.getByRole('button', { name: 'Details' }).click();
+        await shot('x-details', false);
+        await page.keyboard.press('Escape');
+        await page.getByTestId('download').click();
+        await page.waitForTimeout(300);
+        await shot('x-after-download', false);
+        await page.goto(base + '/?size=10MB', { waitUntil: 'load' });
+        await ready();
+        await page.setInputFiles('[data-testid="file-input"]', [`${FIX}/f12-tiny-360p-5s.mp4`]);
+        await page.waitForSelector('[data-state="review"]', { timeout: 60000 });
+        await shot('x-passthrough', false);
+        // Unsupported browser
+        const up = await ctx.newPage();
+        await up.addInitScript(() => { delete window.VideoEncoder; });
+        await up.goto(base + '/', { waitUntil: 'load' });
+        await up.waitForSelector('[data-testid="unsupported"]', { timeout: 20000 });
+        await up.waitForTimeout(600);
+        await up.screenshot({ path: `${out}/x-unsupported-${vp}-${theme}.png` });
+        await up.close();
+      }
       if (only.includes('pages')) {
+        await page.emulateMedia({ reducedMotion: 'reduce' }); // show settled glasses in full-page captures
         for (const p of opt('pages', 'compress-video-for-discord,compress-video-to-10mb,support,about')) {
           await page.goto(`${base}/${p}/`, { waitUntil: 'load' });
           await shot(p, true);

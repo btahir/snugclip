@@ -1,4 +1,4 @@
-import { formatDuration, resolveTarget, targetLabel } from '@snugclip/core';
+import { formatDuration, resolveTarget } from '@snugclip/core';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -61,7 +61,7 @@ function PlanTable({ bytes, caption }: { bytes: number; caption: string }) {
           </tbody>
         </table>
       </div>
-      <p className="foot">{/[.!?]$/.test(caption.trim()) ? caption : `${caption.trim()}.`} Worked out by the same planner the tool uses, for {targetLabel(bytes)}.</p>
+      <p className="foot">{/[.!?]$/.test(caption.trim()) ? caption : `${caption.trim()}.`}</p>
     </div>
   );
 }

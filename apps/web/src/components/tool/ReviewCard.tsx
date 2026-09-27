@@ -39,7 +39,7 @@ function audioLabel(r: Report): string {
 
 /** Details as a popover anchored to its link (desktop) or a bottom sheet (phone). Never resizes the card. */
 function Details({ r, anchor, onClose }: { r: Report; anchor: HTMLElement | null; onClose: () => void }) {
-  const { showToast, engineName, exportReport } = useTool();
+  const { showToast, exportReport } = useTool();
   const ref = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ top: number; left: number; sheet: boolean } | null>(null);
   const o = r.output;
@@ -52,11 +52,12 @@ function Details({ r, anchor, onClose }: { r: Report; anchor: HTMLElement | null
       const sheet = window.matchMedia('(max-width: 760px)').matches;
       if (sheet || !anchor) return setPos({ top: 0, left: 0, sheet: true });
       const a = anchor.getBoundingClientRect();
-      const w = 340;
+      const w = 360;
       const h = ref.current?.offsetHeight ?? 420;
-      const left = Math.max(12, Math.min(a.right - w, window.innerWidth - w - 12));
-      const below = a.bottom + 8;
-      const top = below + h > window.innerHeight - 12 ? Math.max(12, a.top - h - 8) : below;
+      // Beside the side panel (to the left of the link), vertically centred on it, kept on screen.
+      const leftOf = a.left - w - 24;
+      const left = leftOf >= 12 ? leftOf : Math.max(12, Math.min(a.right - w, window.innerWidth - w - 12));
+      const top = Math.max(12, Math.min(a.top + a.height / 2 - h / 2, window.innerHeight - h - 12));
       setPos({ top, left, sheet: false });
     };
     place();
@@ -149,7 +150,6 @@ function Details({ r, anchor, onClose }: { r: Report; anchor: HTMLElement | null
         {group(t.details.groupQuality, quality)}
         {group(t.details.groupFile, file)}
         {group(t.details.groupTech, tech)}
-        {engineName && <p className="dnote">{engineName}</p>}
         <div className="dacts">
           <button
             type="button"
