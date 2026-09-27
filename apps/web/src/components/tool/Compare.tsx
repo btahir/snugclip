@@ -8,6 +8,7 @@ import { lsGet, lsSet } from '@/lib/storage';
 import type { Item } from '@/lib/tool-model';
 
 const MODE_KEY = 'snugclip-compare-mode';
+const CODEC_LABEL: Record<string, string> = { h264: 'H.264', hevc: 'HEVC', av1: 'AV1', vp9: 'VP9' };
 
 export function Compare({ it }: { it: Item }) {
   const r = it.report!;
@@ -22,6 +23,9 @@ export function Compare({ it }: { it: Item }) {
   const [time, setTime] = useState(0);
   const [dur, setDur] = useState(r.output?.durationSec ?? 0);
   const [srcBroken, setSrcBroken] = useState(false);
+  // The browser may encode a format it can't play back (e.g. HEVC in Firefox without a platform
+  // decoder, AV1 on Macs without AV1 hardware). The file is still right; say so instead of black.
+  const [outBroken, setOutBroken] = useState(false);
   const boxRef = useRef<HTMLDivElement>(null);
   const beforeRef = useRef<HTMLVideoElement>(null);
   const afterRef = useRef<HTMLVideoElement>(null);
@@ -159,6 +163,7 @@ export function Compare({ it }: { it: Item }) {
                 if (Number.isFinite(d) && d > 0) setDur(d);
                 e.currentTarget.currentTime = Math.min(0.05, d || 0);
               }}
+              onError={() => setOutBroken(true)}
               onEnded={() => setPlaying(false)}
               onPause={() => setPlaying(false)}
               onPlay={() => setPlaying(true)}
@@ -196,7 +201,12 @@ export function Compare({ it }: { it: Item }) {
           </span>
         )}
         {mode === 'flip' && !pass && <span className="flipnote">{t.review.flipHint}</span>}
-        {srcBroken && <span className="cantplay">{t.review.originalCantPlay}</span>}
+        {srcBroken && !outBroken && <span className="cantplay">{t.review.originalCantPlay}</span>}
+        {outBroken && (
+          <span className="cantplay" role="status">
+            {t.review.snugCantPlay(CODEC_LABEL[r.output?.video?.codec ?? ''] ?? (r.output?.mime ?? 'this').replace(/^video\//, '').toUpperCase())}
+          </span>
+        )}
         <div className="ctools">
           <button type="button" className="ctool" aria-pressed={!!zoom} aria-label={zoom ? t.review.unzoom : t.review.zoom} onClick={() => setZoom((z) => (z ? null : { x: 50, y: 50 }))}>
             <Icon name="zoom" size={18} />

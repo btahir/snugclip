@@ -3,7 +3,7 @@ import { formatDuration, formatSize } from '@snugclip/core';
 import { Icon } from '@/components/Icon';
 import { t } from '@/i18n/en';
 import { etaText, limitText, resultSize, spareText } from '@/lib/format';
-import { maxFittingDuration, type Item } from '@/lib/tool-model';
+import { isAudioError, maxFittingDuration, type Item } from '@/lib/tool-model';
 import { MiniGlass } from './FitGlass';
 import { ReviewCard } from './ReviewCard';
 import { TrimTimeline } from './TrimTimeline';
@@ -285,18 +285,22 @@ export function QueueItem({ it, isNext }: { it: Item; isNext: boolean }) {
     case 'error': {
       glass = <MiniGlass target={target} state="bad" />;
       const e = it.error;
-      const msg =
-        e?.code === 'E_UNSUPPORTED' || e?.code === 'E_UNSUPPORTED_ENCODER'
-          ? !it.probe
-            ? t.errors.cantOpen(/\.([a-z0-9]{2,5})$/i.exec(it.name)?.[1] ?? '')
-            : !it.probe.video
-              ? t.errors.notVideo
-              : t.errors.unsupportedFile((e.codec ?? it.probe.video.codec).toUpperCase())
-          : e?.code === 'E_FIT_FAILED'
-            ? t.errors.couldNotFit
-            : e?.code === 'E_QUOTA'
-              ? t.errors.quota
-              : t.errors.generic(e?.message || e?.code || '');
+      const audioErr = isAudioError(e);
+      const msg = audioErr
+        ? t.errors.audioUnsupported
+        : e?.code === 'E_WORKER'
+          ? t.errors.worker
+          : e?.code === 'E_UNSUPPORTED' || e?.code === 'E_UNSUPPORTED_ENCODER'
+            ? !it.probe
+              ? t.errors.cantOpen(/\.([a-z0-9]{2,5})$/i.exec(it.name)?.[1] ?? '')
+              : !it.probe.video
+                ? t.errors.notVideo
+                : t.errors.unsupportedFile((e.codec ?? it.probe.video.codec).toUpperCase())
+            : e?.code === 'E_FIT_FAILED'
+              ? t.errors.couldNotFit
+              : e?.code === 'E_QUOTA'
+                ? t.errors.quota
+                : t.errors.generic(e?.message || e?.code || '');
       main = (
         <>
           <Title it={it} />
@@ -314,14 +318,14 @@ export function QueueItem({ it, isNext }: { it: Item; isNext: boolean }) {
                 {t.errors.whatWorks}
               </a>
             </span>
-            <div className="actions" hidden={e?.code === 'E_UNSUPPORTED' || e?.code === 'E_UNSUPPORTED_ENCODER'}>
-              {e?.code !== 'E_UNSUPPORTED' && (
+            <div className="actions" hidden={!audioErr && (e?.code === 'E_UNSUPPORTED' || e?.code === 'E_UNSUPPORTED_ENCODER')}>
+              {e?.code !== 'E_UNSUPPORTED' && !audioErr && (
                 <button type="button" className="btn sm" onClick={() => tool.retry(it.id)}>
                   <Icon name="retry" size={16} />
                   {t.item.retry}
                 </button>
               )}
-              {e?.code === 'E_ENCODE' && it.probe?.audio && !(it.overrides?.mute ?? state.options.mute) && (
+              {(e?.code === 'E_ENCODE' || audioErr) && it.probe?.audio && !(it.overrides?.mute ?? state.options.mute) && (
                 <button type="button" className="btn sm" onClick={() => tool.retry(it.id, { mute: true })}>
                   <Icon name="mute" size={16} />
                   {t.item.retryMuted}

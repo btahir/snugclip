@@ -11,12 +11,13 @@ import { TargetBar, TierBar } from './TargetBar';
 import { ToastAndLive } from './Toast';
 import { ToolProvider, useTool } from './ToolProvider';
 import { Unsupported } from './Unsupported';
+import { Icon } from '@/components/Icon';
 import { t } from '@/i18n/en';
 import { HeroGlass } from '@/components/site/HeroGlass';
 import { limitText } from '@/lib/format';
 
 function ToolInner({ hero, tiers }: { hero?: boolean; tiers?: boolean }) {
-  const { state, support } = useTool();
+  const { state, support, audioLimited } = useTool();
   const [optionsOpen, setOptionsOpen] = useState(false);
   const over = useGlobalDrop();
   const close = useCallback(() => setOptionsOpen(false), []);
@@ -42,6 +43,12 @@ function ToolInner({ hero, tiers }: { hero?: boolean; tiers?: boolean }) {
         <TargetBar optionsOpen={optionsOpen} onToggleOptions={() => setOptionsOpen((o) => !o)} />
       </div>
       {tiers && <TierBar />}
+      {audioLimited && (
+        <p className="notice info compat-note" role="note" data-testid="audio-limited">
+          <Icon name="info" size={18} />
+          <span>{t.unsupported.audioLimited}</span>
+        </p>
+      )}
       {optionsOpen && <OptionsDrawer onClose={close} returnFocusTo={optsBtn} />}
       {support === 'unsupported' ? (
         <Unsupported />

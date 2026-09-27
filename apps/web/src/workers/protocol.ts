@@ -17,6 +17,12 @@ export type ToWorker =
   | { type: 'pause'; rid: number }
   | { type: 'resume'; rid: number };
 
+/** What the worker's realm can do, found by feature detection (never by user agent). */
+export interface WorkerEnv {
+  /** WebCodecs AudioDecoder exists (Safari before 26 has none): needed to re-encode sound. */
+  audioDecoder: boolean;
+}
+
 export interface WireError {
   code: string;
   message: string;
@@ -24,9 +30,11 @@ export interface WireError {
 }
 
 export type FromWorker =
-  | { type: 'init'; rid: number; caps: WireCaps | null; supported: boolean; reason?: string; engine: string }
+  | { type: 'init'; rid: number; caps: WireCaps | null; supported: boolean; reason?: string; engine: string; env?: WorkerEnv }
   | { type: 'probe'; rid: number; probe?: Probe; error?: WireError }
   | { type: 'thumbs'; rid: number; blobs: (Blob | null)[]; error?: WireError }
   | { type: 'progress'; rid: number; progress: FitProgress; encodedFraction?: number }
   | { type: 'stall'; rid: number }
-  | { type: 'done'; rid: number; report: Report; output: Blob | null };
+  | { type: 'done'; rid: number; report: Report; output: Blob | null }
+  /** A request the worker couldn't finish at all (an unexpected throw, not an encode error). */
+  | { type: 'failed'; rid: number; error: WireError };

@@ -194,12 +194,15 @@ export function ReviewCard({ it }: { it: Item }) {
   }, [it.id]);
   useEffect(() => {
     try {
-      const f = new File([new Blob()], 'x.mp4', { type: 'video/mp4' });
+      // Probe with the real output type: Safari and Android share sheets accept MP4 but may refuse
+      // WebM, and desktop Firefox has no Web Share at all (then Download is the only action).
+      const type = it.output?.type || 'video/mp4';
+      const f = new File([new Blob()], type === 'video/webm' ? 'x.webm' : 'x.mp4', { type });
       setCanShare(!!navigator.canShare?.({ files: [f] }) && matchMedia('(pointer: coarse)').matches);
     } catch {
       setCanShare(false);
     }
-  }, []);
+  }, [it.output]);
 
   const size = resultSize(out);
   const [num, unit] = size.split(' ');

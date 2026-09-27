@@ -223,6 +223,15 @@ export function isProbablyVideo(f: File): boolean {
   return f.type.startsWith('video/') || f.type.startsWith('audio/') || VIDEO_EXT.test(f.name) || AUDIO_EXT.test(f.name);
 }
 
+/**
+ * An "unsupported" error caused by the sound, not the picture: the browser can't decode or encode
+ * this clip's audio (Safari before 26 has no AudioDecoder; an AAC encoder that failed to load).
+ * The engine's messages for these always name the audio. Muting fixes them.
+ */
+export function isAudioError(e: ItemError | undefined): boolean {
+  return !!e && (e.code === 'E_UNSUPPORTED' || e.code === 'E_UNSUPPORTED_ENCODER') && /\b(audio|sound|aac|opus)\b/i.test(e.message);
+}
+
 export function isJobFile(f: File): boolean {
   return /\.snugclip\.json$/i.test(f.name) || (f.type === 'application/json' && /snugclip/i.test(f.name));
 }

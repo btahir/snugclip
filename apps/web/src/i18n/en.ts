@@ -183,6 +183,8 @@ export const en = {
     zoom: 'Zoom 2×',
     unzoom: 'Zoom out',
     originalCantPlay: "Your browser can't play the original here, so only the compressed clip is shown.",
+    snugCantPlay: (codec: string) =>
+      `Your browser can't preview ${codec} video, but the file is fine: download it and it plays wherever ${codec} does.`,
     under: 'under the',
     line: 'line',
     spare: (s: string) => `${s} to spare`,
@@ -257,6 +259,8 @@ export const en = {
     jobFile: (msg: string) => `That setup file couldn't be read: ${msg}`,
     deepLink: (msgs: string[]) => `Some link settings were ignored: ${msgs.join('; ')}`,
     notAVideoFile: (name: string) => `${name} isn't a video file, so it was skipped.`,
+    audioUnsupported: "Your browser can't process this clip's sound. Compress it without sound, or use Chrome, Edge or Safari 26+ to keep it.",
+    worker: "Snugclip's compression engine stopped in this browser. Reload the page and try again.",
   },
   unsupported: {
     title: "This browser can't compress video yet",
@@ -267,6 +271,9 @@ export const en = {
     copyLink: 'Copy link',
     copied: 'Link copied',
     offlineFirst: "You're offline. Snugclip needs one visit online to save itself for offline use.",
+    bodyNoEncoder: "This browser has a video engine, but it can't write H.264 or VP9 video, which Snugclip needs.",
+    bodyEngineFailed: "Snugclip's compression engine couldn't start in this browser. Reloading may help; if it doesn't, try one of these.",
+    audioLimited: "This browser can't re-encode sound (Safari 26 and newer can). If a clip's sound can't be kept as is, you can compress it without sound.",
   },
   trimmer: {
     title: 'Trim',

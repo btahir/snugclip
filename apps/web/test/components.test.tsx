@@ -74,8 +74,14 @@ describe('TargetBar', () => {
 
 describe('Unsupported', () => {
   it('lists what works', () => {
-    render(<Unsupported />);
+    render(
+      <ToolProvider>
+        <Unsupported />
+      </ToolProvider>,
+    );
     expect(screen.getByRole('heading', { name: "This browser can't compress video yet" })).toBeTruthy();
     expect(screen.getAllByRole('listitem')).toHaveLength(3);
+    // jsdom has no Worker/WebCodecs: the "no video engine" explanation, not the engine-failed one.
+    expect(screen.getByText(/this one doesn't have it/)).toBeTruthy();
   });
 });

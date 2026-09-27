@@ -35,7 +35,7 @@ import {
   type ToolState,
   type UiOptions,
 } from '@/lib/tool-model';
-import { WorkerClient, type InitResult, type RunHandle } from '@/lib/worker-client';
+import { WorkerClient, WorkerFailure, type InitResult, type RunHandle } from '@/lib/worker-client';
 
 const LAST_TARGET_KEY = 'snugclip-last-target';
 const SUPPORT_DISMISSED_KEY = 'snugclip-support-dismissed';
@@ -49,6 +49,8 @@ interface ToolApi {
   supportReason?: string;
   caps: EngineCapabilities | null;
   engineName: string;
+  /** The browser can encode video but can't decode audio (Safari before 26): sound may need muting. */
+  audioLimited: boolean;
   addFiles(files: File[] | FileList, source?: 'drop' | 'paste' | 'picker'): void;
   remove(id: string): void;
   cancel(id: string): void;
@@ -277,7 +279,16 @@ export function ToolProvider({ children, initialTarget }: { children: ReactNode;
         onStall: () => dispatch({ type: 'update', id: it.id, patch: { stalled: true } }),
       });
       handles.current.set(it.id, h);
-      h.done.then(({ report, output }) => finish(it.id, report, output));
+      h.done.then(
+        ({ report, output }) => finish(it.id, report, output),
+        (e: unknown) => {
+          // The worker couldn't run this at all (it failed to load or crashed).
+          handles.current.delete(it.id);
+          const error = e instanceof WorkerFailure ? e.error : { code: 'E_INTERNAL', message: String(e) };
+          dispatch({ type: 'update', id: it.id, patch: { status: 'error', progress: undefined as never, paused: false, stalled: false, error: { code: error.code, message: error.message } } });
+          announce(t.item.announceError(it.name));
+        },
+      );
     },
     [announce, finish],
   );
@@ -569,6 +580,7 @@ export function ToolProvider({ children, initialTarget }: { children: ReactNode;
     ...(init?.reason ? { supportReason: init.reason } : {}),
     caps,
     engineName: init?.engine ?? '',
+    audioLimited: !!init?.supported && init.env?.audioDecoder === false,
     addFiles,
     remove,
     cancel,

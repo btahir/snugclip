@@ -68,19 +68,22 @@ self.onmessage = async (ev: MessageEvent<ToWorker>) => {
   const msg = ev.data;
   switch (msg.type) {
     case 'init': {
+      // Feature detection in the worker's own realm: a browser can expose WebCodecs on the page
+      // but not in workers, and Safari before 26 has video WebCodecs without AudioDecoder.
+      const env = { audioDecoder: typeof AudioDecoder !== 'undefined' };
       const supported = typeof VideoEncoder !== 'undefined' && typeof VideoDecoder !== 'undefined';
       if (!supported) {
-        post({ type: 'init', rid: msg.rid, caps: null, supported: false, reason: 'no-webcodecs', engine: 'none' });
+        post({ type: 'init', rid: msg.rid, caps: null, supported: false, reason: 'no-webcodecs', engine: 'none', env });
         return;
       }
       try {
         const { engine, name } = await getEngine();
         const caps = await engine.capabilities();
         const ok = caps.videoCodecs.includes('h264') || caps.videoCodecs.includes('vp9');
-        post({ type: 'init', rid: msg.rid, caps: wireCaps(caps), supported: ok, ...(ok ? {} : { reason: 'no-encoder' }), engine: `${name} ${caps.version} · ${engine.latencyMode} latency${engine.aacPolyfilled ? ' · AAC from /vendor' : ''}` });
+        post({ type: 'init', rid: msg.rid, caps: wireCaps(caps), supported: ok, ...(ok ? {} : { reason: 'no-encoder' }), engine: `${name} ${caps.version} · ${engine.latencyMode} latency${engine.aacPolyfilled ? ' · AAC from /vendor' : ''}`, env });
       } catch (e) {
         console.error('snugclip: engine init failed', e);
-        post({ type: 'init', rid: msg.rid, caps: null, supported: false, reason: toWire(e).message, engine: 'none' });
+        post({ type: 'init', rid: msg.rid, caps: null, supported: false, reason: toWire(e).message, engine: 'none', env });
       }
       return;
     }
@@ -104,25 +107,33 @@ self.onmessage = async (ev: MessageEvent<ToWorker>) => {
     case 'run': {
       const ctl = new AbortController();
       runs.set(msg.rid, ctl);
-      const { engine } = await getEngine();
-      let lastPost = 0;
-      const report = await runFit(engine, msg.file, msg.target, msg.options, {
-        now: () => Date.now(),
-        signal: ctl.signal,
-        inputName: msg.name,
-        ...(msg.probe ? { probe: msg.probe } : {}),
-        stallMs: TUNING.stallMs.web,
-        timers: { setTimeout: (fn, ms) => setTimeout(fn, ms), clearTimeout: (h) => clearTimeout(h as number) },
-        onProgress: (p) => {
-          const t = Date.now();
-          if (t - lastPost < 100 && p.phase !== 'done') return; // ≤ 10 messages/s
-          lastPost = t;
-          post({ type: 'progress', rid: msg.rid, progress: p });
-        },
-      });
-      runs.delete(msg.rid);
-      const { outputRef, ...plain } = report;
-      post({ type: 'done', rid: msg.rid, report: plain, output: outputRef ?? null });
+      try {
+        const { engine } = await getEngine();
+        let lastPost = 0;
+        const report = await runFit(engine, msg.file, msg.target, msg.options, {
+          now: () => Date.now(),
+          signal: ctl.signal,
+          inputName: msg.name,
+          ...(msg.probe ? { probe: msg.probe } : {}),
+          stallMs: TUNING.stallMs.web,
+          timers: { setTimeout: (fn, ms) => setTimeout(fn, ms), clearTimeout: (h) => clearTimeout(h as number) },
+          onProgress: (p) => {
+            const t = Date.now();
+            if (t - lastPost < 100 && p.phase !== 'done') return; // ≤ 10 messages/s
+            lastPost = t;
+            post({ type: 'progress', rid: msg.rid, progress: p });
+          },
+        });
+        const { outputRef, ...plain } = report;
+        post({ type: 'done', rid: msg.rid, report: plain, output: outputRef ?? null });
+      } catch (e) {
+        // runFit reports encode errors in its Report; a throw here is unexpected (engine load,
+        // a structured-clone failure). Tell the page so the item doesn't wait forever.
+        console.error('snugclip: run failed', e);
+        post({ type: 'failed', rid: msg.rid, error: toWire(e) });
+      } finally {
+        runs.delete(msg.rid);
+      }
       return;
     }
     case 'cancel': {

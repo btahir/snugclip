@@ -229,7 +229,7 @@
 .sheet-scrim { display: none; }
 @media (max-width: 760px) {
   .sheet-scrim { display: block; position: fixed; inset: 0; background: color-mix(in oklab, var(--sn-scrim) 55%, transparent); z-index: 60; animation: fade-in var(--sn-dur-3) var(--sn-ease-out); }
-  .drawer { position: fixed; left: 0; right: 0; bottom: 0; z-index: 61; margin: 0; max-height: 85vh; overflow: auto; border-radius: 22px 22px 0 0; padding: 10px 18px calc(18px + env(safe-area-inset-bottom)); animation: sheet-up var(--sn-dur-3) var(--sn-ease-out); }
+  .drawer { position: fixed; left: 0; right: 0; bottom: 0; z-index: 61; margin: 0; max-height: 85vh; max-height: 85dvh; overflow: auto; border-radius: 22px 22px 0 0; padding: 10px 18px calc(18px + env(safe-area-inset-bottom)); animation: sheet-up var(--sn-dur-3) var(--sn-ease-out); }
   .drawer::before { content: ""; display: block; width: 40px; height: 5px; border-radius: 9px; background: var(--sn-line-2); margin: 0 auto 12px; }
   .opt-grid { grid-template-columns: 1fr; gap: 18px; }
 }
@@ -409,6 +409,8 @@
 .scrub input[type=range]::-moz-range-thumb { width: 12px; height: 12px; border-radius: 50%; background: var(--sn-surface); border: 2px solid var(--sn-ink-2); }
 .scrub input[type=range]:focus-visible { box-shadow: none; }
 .scrub input[type=range]:focus-visible::-webkit-slider-thumb { box-shadow: var(--sn-ring); }
+/* Firefox: the input's own ring is removed above, so the thumb must carry it here too. */
+.scrub input[type=range]:focus-visible::-moz-range-thumb { box-shadow: var(--sn-ring); }
 .scrub .t { font: 500 12.5px var(--sn-font-mono); color: var(--sn-ink-3); white-space: nowrap; }
 
 /* Trim */
@@ -623,8 +625,8 @@
 .empty-glass .eg-liq { transition: transform 320ms var(--sn-ease-out); }
 
 /* Details popover / sheet (REVIEW B2) */
-.details-pop { position: fixed; z-index: 70; width: 360px; max-height: calc(100vh - 24px); overflow: auto; background: var(--sn-surface); border: 1px solid var(--sn-line); border-radius: var(--sn-radius-md); box-shadow: var(--sn-shadow-3); padding: 12px 16px 16px; animation: pop-in var(--sn-dur-2) var(--sn-ease-out); outline: none; }
-.details-pop.sheet { left: 0; right: 0; bottom: 0; top: auto; width: auto; max-height: 85vh; border-radius: 22px 22px 0 0; padding: 10px 18px calc(18px + env(safe-area-inset-bottom)); animation: sheet-up var(--sn-dur-3) var(--sn-ease-out); }
+.details-pop { position: fixed; z-index: 70; width: 360px; max-height: calc(100vh - 24px); max-height: calc(100dvh - 24px); overflow: auto; background: var(--sn-surface); border: 1px solid var(--sn-line); border-radius: var(--sn-radius-md); box-shadow: var(--sn-shadow-3); padding: 12px 16px 16px; animation: pop-in var(--sn-dur-2) var(--sn-ease-out); outline: none; }
+.details-pop.sheet { left: 0; right: 0; bottom: 0; top: auto; width: auto; max-height: 85vh; max-height: 85dvh; border-radius: 22px 22px 0 0; padding: 10px 18px calc(18px + env(safe-area-inset-bottom)); animation: sheet-up var(--sn-dur-3) var(--sn-ease-out); }
 .details-pop.sheet::before { content: ""; display: block; width: 40px; height: 5px; border-radius: 9px; background: var(--sn-line-2); margin: 0 auto 8px; }
 .details-scrim { display: block !important; position: fixed; inset: 0; z-index: 69; background: color-mix(in oklab, var(--sn-scrim) 55%, transparent); }
 .details-pop .dhead { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
@@ -770,3 +772,6 @@
 .chip-scroll.right { box-shadow: var(--sn-shadow-1), 0 0 0 1px var(--sn-line), -16px 0 14px 6px var(--sn-surface); }
 /* minor 9: "$5/mo" together */
 .support-hero .tier b span.mo { font: 500 14px var(--sn-font-ui); color: var(--sn-ink-3); }
+
+/* Feature-detected browser limits (e.g. no AudioDecoder before Safari 26) */
+.compat-note { margin-top: 12px; }

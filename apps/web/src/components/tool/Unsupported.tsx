@@ -3,14 +3,24 @@ import { useState } from 'react';
 import { Icon } from '@/components/Icon';
 import { t } from '@/i18n/en';
 import { EmptyGlass } from './FitGlass';
+import { useTool } from './ToolProvider';
+
+/** Why the tool can't run, from the worker's feature detection (see ToolProvider / worker init). */
+function bodyFor(reason: string | undefined): string {
+  if (!reason || reason === 'no-webcodecs') return t.unsupported.body;
+  if (reason === 'no-encoder') return t.unsupported.bodyNoEncoder;
+  return t.unsupported.bodyEngineFailed;
+}
 
 export function Unsupported() {
+  const { supportReason } = useTool();
   const [copied, setCopied] = useState(false);
+  const [manual, setManual] = useState<string | null>(null);
   return (
     <div className="unsupported" role="region" aria-labelledby="unsupported-title" data-testid="unsupported">
       <EmptyGlass question size={72} />
       <h2 id="unsupported-title">{t.unsupported.title}</h2>
-      <p>{t.unsupported.body}</p>
+      <p>{bodyFor(supportReason)}</p>
       <ul aria-label={t.unsupported.works}>
         {t.unsupported.list.map((x) => (
           <li key={x}>
@@ -29,13 +39,19 @@ export function Unsupported() {
             await navigator.clipboard.writeText(window.location.href);
             setCopied(true);
           } catch {
-            /* ignore */
+            // No async clipboard (older browsers, blocked permission): show the link to copy by hand.
+            setManual(window.location.href);
           }
         }}
       >
         <Icon name="link" size={18} />
         {copied ? t.unsupported.copied : t.unsupported.copyLink}
       </button>
+      {manual && (
+        <p className="mono" style={{ marginTop: 12, fontSize: 'var(--sn-text-xs)', userSelect: 'all', wordBreak: 'break-all' }}>
+          {manual}
+        </p>
+      )}
     </div>
   );
 }
