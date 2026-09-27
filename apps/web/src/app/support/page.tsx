@@ -83,7 +83,7 @@ export default function SupportPage() {
               </Link>
             </p>
           </div>
-          <div className="illo" style={{ display: 'grid', placeItems: 'center' }}>
+          <div className="illo">
             <HeroGlass label="Thank you" />
           </div>
         </section>

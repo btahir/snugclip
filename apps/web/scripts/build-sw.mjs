@@ -30,7 +30,7 @@ const { count, size, warnings } = await injectManifest({
   swDest,
   globDirectory: out,
   globPatterns: ['**/*.{html,js,mjs,css,woff2,svg,png,ico,json,txt,xml,webmanifest}'],
-  globIgnores: ['sw.js', '**/*.map'],
+  globIgnores: ['sw.js', '**/*.map', 'og/**'],
   dontCacheBustURLsMatching: /^_next\/static\//,
   maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
   // Browsers request `app/[slug]/page.js` as `app/%5Bslug%5D/page.js`; precache the encoded form.

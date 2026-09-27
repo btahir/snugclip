@@ -506,6 +506,7 @@
 .related { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
 .related a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; border-radius: var(--sn-radius-pill); background: var(--sn-surface); border: 1px solid var(--sn-line); text-decoration: none; font-weight: 700; font-size: var(--sn-text-sm); color: var(--sn-ink); transition: border-color var(--sn-dur-2); }
 .related a:hover { border-color: var(--sn-line-2); }
+.support-hero .illo { display: grid; place-items: center; }
 .support-hero { background: var(--sn-surface); border-radius: var(--sn-radius-lg); box-shadow: var(--sn-shadow-2); padding: 40px; display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 32px; align-items: center; margin-top: 24px; }
 .tiers { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
 .tier { display: inline-flex; align-items: baseline; gap: 6px; min-height: 48px; padding: 0 18px; border-radius: var(--sn-radius-pill); border: 1px solid var(--sn-line-2); background: var(--sn-surface-2); text-decoration: none; color: var(--sn-ink); align-items: center; font-size: var(--sn-text-sm); transition: border-color var(--sn-dur-2), transform var(--sn-dur-1); }
