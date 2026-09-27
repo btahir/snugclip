@@ -17,12 +17,14 @@ import { useTool } from './ToolProvider';
 type Pop = { key: string; left: number } | null;
 
 export function optionsSummary(o: { codec: string; mute: boolean; keepFps: boolean; maxShortSide?: number }): string {
+  // Only what differs from the defaults (at most two items), so the summary never truncates.
   const parts: string[] = [];
   if (o.codec !== 'compatible' && o.codec !== 'h264') parts.push(o.codec === 'vp9' ? 'WebM' : 'smaller');
-  parts.push(o.mute ? t.options.summaryMuted : t.options.summarySound);
-  parts.push(o.maxShortSide ? t.options.summaryMax(o.maxShortSide) : t.options.summaryAutoSize);
+  if (o.mute) parts.push(t.options.summaryMuted);
+  if (o.maxShortSide) parts.push(t.options.summaryMax(o.maxShortSide));
   if (o.keepFps) parts.push(t.options.summaryKeepFps);
-  return t.target.optionsSummary(parts);
+  if (!parts.length) return t.options.summaryDefault;
+  return t.target.optionsSummary(parts.length > 2 ? [...parts.slice(0, 2), `+${parts.length - 2}`] : parts);
 }
 
 /** Tier segmented control for the selected platform, shown inline under the bar on landing pages. */

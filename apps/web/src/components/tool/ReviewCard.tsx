@@ -54,8 +54,9 @@ function Details({ r, anchor, onClose }: { r: Report; anchor: HTMLElement | null
       const a = anchor.getBoundingClientRect();
       const w = 360;
       const h = ref.current?.offsetHeight ?? 420;
-      // Beside the side panel (to the left of the link), vertically centred on it, kept on screen.
-      const leftOf = a.left - w - 24;
+      // Over the video, right-aligned to the side panel's left edge, so the readout stays visible.
+      const panel = anchor.closest('.right')?.getBoundingClientRect();
+      const leftOf = (panel ? panel.left : a.left) - w - 12;
       const left = leftOf >= 12 ? leftOf : Math.max(12, Math.min(a.right - w, window.innerWidth - w - 12));
       const top = Math.max(12, Math.min(a.top + a.height / 2 - h / 2, window.innerHeight - h - 12));
       setPos({ top, left, sheet: false });
@@ -245,7 +246,16 @@ export function ReviewCard({ it }: { it: Item }) {
             <div className="of">
               {t.review.under} <b>{limit}</b> {t.review.line}
             </div>
-            <div className="spare">{pass ? t.review.alreadyFits(spare) : t.review.spare(spare)}</div>
+            <div className="spare">
+              {pass ? (
+                <>
+                  <span>{t.item.alreadyFits}</span>
+                  <span>{t.review.spare(spare)}</span>
+                </>
+              ) : (
+                t.review.spare(spare)
+              )}
+            </div>
             {!pass && <div className="was">{t.review.was(formatSize(it.bytes, { round: 'nearest' }), reductionText(it.bytes, out))}</div>}
           </div>
         </div>

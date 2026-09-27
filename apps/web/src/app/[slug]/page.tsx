@@ -17,6 +17,9 @@ import { formatSize } from '@/lib/format';
 
 export const dynamicParams = false;
 
+/** Keep numbers and units together in headings ("20\u00a0MB"). */
+const nb = (s: string) => s.replace(/(\d) (MB|GB|KB|MiB)/g, '$1\u00a0$2');
+
 export function generateStaticParams() {
   return KEYWORD_PAGES.map((p) => ({ slug: p.slug }));
 }
@@ -106,8 +109,8 @@ export default async function KeywordLanding({ params }: { params: Promise<{ slu
               </span>
               {p.eyebrow.label} · <span className="num">{p.eyebrow.value}</span>
             </span>
-            <h1 className="h1">{p.h1}</h1>
-            <p className="lede">{p.lede}</p>
+            <h1 className="h1">{nb(p.h1)}</h1>
+            <p className="lede">{nb(p.lede)}</p>
           </div>
           <div className="hero-glass">
             <HeroGlass label={p.glassLabel} />
@@ -117,7 +120,7 @@ export default async function KeywordLanding({ params }: { params: Promise<{ slu
         <Tool initialTarget={target} tiers />
 
         <section className="section" aria-labelledby="limits">
-          <h2 id="limits">{p.limits.heading}</h2>
+          <h2 id="limits">{nb(p.limits.heading)}</h2>
           <div className="prose narrow" style={{ maxWidth: 720 }}>
             <p>{p.limits.intro}</p>
           </div>
@@ -159,7 +162,7 @@ export default async function KeywordLanding({ params }: { params: Promise<{ slu
 
         {p.sections.map((s, i) => (
           <section key={s.heading} className="section narrow prose" aria-labelledby={`s${i}`}>
-            <h2 id={`s${i}`}>{s.heading}</h2>
+            <h2 id={`s${i}`}>{nb(s.heading)}</h2>
             {s.blocks.map((b, j) => (
               <BlockView key={j} b={b} />
             ))}
@@ -224,7 +227,7 @@ export default async function KeywordLanding({ params }: { params: Promise<{ slu
           </div>
         </section>
 
-        <CtaBand title={`Ready? Fit your clip under ${p.glassLabel}.`} button="Choose a video" />
+        <CtaBand title={nb(`Ready? Fit your clip under ${p.glassLabel}.`)} button="Choose a video" />
 
         <section className="section" aria-labelledby="related">
           <h2 id="related">Related</h2>

@@ -200,7 +200,8 @@ export function QueueItem({ it, isNext }: { it: Item; isNext: boolean }) {
           <p className="sub">
             {r.passThrough && (
               <>
-                {resultSize(out)} · <b className="ok-word">{t.item.alreadyFits}</b> · {t.review.spare(spareText(out, target))}
+                {resultSize(out)} · <b className="ok-word">{t.item.alreadyFits}</b>
+                <span className="spare-tail"> · {t.review.spare(spareText(out, target))}</span>
                 {it.downloaded ? ` · ${t.item.downloadedWord}` : ''}
               </>
             )}

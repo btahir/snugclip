@@ -60,9 +60,9 @@ export function MiniGlass({ bytes = 0, target, projected, state = 'idle', settle
 export function EmptyGlass({ question = false, size = 64, level = 0.3, label }: { question?: boolean; size?: number; level?: number; label?: string }) {
   // Tumbler inner spans y 8 → 41.8; the line sits at y 15.5.
   const top = 41.8 - (41.8 - 15.5) * Math.max(0, Math.min(1, level));
-  const w = label ? size * 1.9 : size;
+  const w = label ? size * 2 : size;
   return (
-    <svg className="empty-glass" width={w} height={size} viewBox={`0 0 ${label ? 91 : 48} 48`} aria-hidden="true">
+    <svg className="empty-glass" width={w} height={size} viewBox={`0 0 ${label ? 96 : 48} 48`} aria-hidden="true">
       <defs>
         <clipPath id="eg-in">
           <path d="M9.5 8H38.5L36.1 35.4A7 7 0 0 1 29.1 41.8H18.9A7 7 0 0 1 11.9 35.4Z" />
@@ -79,7 +79,7 @@ export function EmptyGlass({ question = false, size = 64, level = 0.3, label }: 
       <path d="M9.5 8 11.9 35.4A7 7 0 0 0 18.9 41.8H29.1A7 7 0 0 0 36.1 35.4L38.5 8" fill="none" stroke="var(--sn-ink)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
       <path d="M5 15.5H43" stroke="var(--sn-limit)" strokeWidth="3" strokeLinecap="round" />
       {label && (
-        <text x="47" y="19.6" fontFamily="var(--sn-font-display)" fontWeight="600" fontSize="11" fill="var(--sn-limit-text)">
+        <text x="46" y="20" fontFamily="var(--sn-font-display)" fontWeight="600" fontSize="13" fill="var(--sn-limit-text)">
           {label}
         </text>
       )}

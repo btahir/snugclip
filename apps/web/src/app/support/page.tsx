@@ -66,8 +66,11 @@ export default function SupportPage() {
             <div className="tiers">
               {DONATION_LINKS.monthly.map((tier) => (
                 <PayLink key={tier.label} href={tier.href} className="tier">
-                  <b>{tier.label}</b>
-                  <span>/mo · {tier.note}</span>
+                  <b>
+                    {tier.label}
+                    <span className="mo">/mo</span>
+                  </b>
+                  <span>{tier.note}</span>
                 </PayLink>
               ))}
             </div>
