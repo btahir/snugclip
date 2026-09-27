@@ -37,3 +37,14 @@ The Snugclip wordmark is lettering outlined from Outfit (SIL OFL 1.1). The logo,
 ## Test media
 
 All test and demo clips are synthetic, generated locally with ffmpeg's test sources (`testsrc2`, noise, tones). No real footage is included.
+
+## Launch media (README hero, screenshots, before/after, launch video)
+
+Everything in `docs/media/` and `docs/screenshots/` is original and MIT licensed with the code. It was captured from the real app (static build, headless Chrome, network switched off) and assembled with ffmpeg, gifski, libwebp and [HyperFrames](https://hyperframes.heygen.com) (the video composition only; no HyperFrames code ships in Snugclip). The launch video has no music or voice.
+
+The demo clips in the footage (`beach-sunset.mov`, `lake-morning.mp4`, `rainy-street.mp4`, `puppy-leaves.mp4`) are synthetic: slow pan-and-zoom moves over still images generated for Snugclip with OpenAI image generation through Codex (`codex exec`, built-in `image_gen` tool), plus ffmpeg film grain and noise audio. No real footage, people or brands appear. The prompts, verbatim:
+
+- **beach-sunset:** "a photorealistic landscape-format (16:9, wide) photograph of a quiet beach at golden hour: gentle waves rolling onto wet sand that reflects an orange and soft teal sky, a few dark rocks in the distance, warm low sun near the horizon. No people, no text, no logos, no boats with names. Natural colour, 35mm lens look, fine film grain."
+- **lake-morning:** "a photorealistic landscape-format (16:9, wide) photograph of a calm alpine lake at early morning: low mist over the water, dark pine forest on both shores, snowy peaks catching first light, a small weathered wooden dock in the foreground. No people, no text, no logos. Natural colour, crisp detail."
+- **rainy-street:** "a photorealistic landscape-format (16:9, wide) photograph of a rainy city street at night from pedestrian height: wet asphalt reflecting warm and teal lights, soft bokeh from shop windows and street lamps, blurred silhouettes of parked bicycles. No people, no readable text, no signs with words, no logos or brands. Cinematic, shallow depth of field."
+- **puppy-leaves:** "a photorealistic portrait-format (9:16, tall) photograph of a happy golden puppy leaping through orange autumn leaves in a park, leaves in mid-air, soft afternoon light, shallow depth of field. No people, no text, no logos, no collar tags with writing."
