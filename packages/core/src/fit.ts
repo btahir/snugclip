@@ -631,9 +631,11 @@ export async function runFit<I, O>(engine: Engine<I, O>, input: I, target: Targe
     if (!deps.skipQuality) {
       emit('checking', 0, encEnd);
       try {
-        const times = qualityTimes(D, normalizeOptions(options).qualityFrames ?? TUNING.quality.frames);
+        // Snap sample times onto the output's frame grid so both sides pick the same instant.
+        const fpsOut = kept.rung.fps;
+        const times = qualityTimes(D, normalizeOptions(options).qualityFrames ?? TUNING.quality.frames).map((t) => Math.round(t * fpsOut) / fpsOut);
         const start = plan.trim?.startSec ?? 0;
-        const src = await engine.frames(input, times.map((t) => Math.round((start + t) * 1000) / 1000), E, signal);
+        const src = await engine.frames(input, times.map((t) => start + t), E, signal);
         const out = await engine.frames(heldNow, times, E, signal);
         const n = Math.min(src.length, out.length);
         if (n > 0) {

@@ -222,19 +222,40 @@ export class FfmpegEngine implements Engine<string, FfOutput> {
     const probe = typeof src === 'string' ? await this.probe(src) : await this.probeUncached(path);
     const v = probe.video!;
     const { width, height } = frameDims(v.displayWidth, v.displayHeight, evalShortSide);
+    const frameBytes = width * height * 4;
+    const scale = `scale=${width}:${height}:flags=bicubic,format=rgba`;
+    const toFrame = (buf: Buffer, i: number): LumaFrame => ({ width, height, data: new Uint8ClampedArray(buf.buffer, buf.byteOffset + i * frameBytes, frameBytes) });
+    // Short clips and index-less containers (MPEG-PS/TS seek by bitrate guess): decode once and pick
+    // frames by number, which is exact. Long indexed files: one fast input seek per frame.
+    if (probe.durationSec <= 180 || /^(mpeg|mpegts)$/.test(probe.container)) {
+      const fps = v.fps || 30;
+      const maxN = v.frameCount ? v.frameCount - 1 : Math.floor(probe.durationSec * fps) - 1;
+      const wanted = timesSec.map((t) => Math.max(0, Math.min(maxN, Math.round(t * fps))));
+      const unique = [...new Set(wanted)].sort((a, b) => a - b);
+      const select = unique.map((n) => `eq(n\\,${n})`).join('+');
+      const r = await run(
+        info.ffmpeg,
+        ['-hide_banner', '-nostdin', '-v', 'error', '-i', path, '-an', '-vf', `select='${select}',${scale}`, '-fps_mode', 'passthrough', '-frames:v', String(unique.length), '-threads', String(this.threads), '-f', 'rawvideo', 'pipe:1'],
+        { signal, collectStdout: true },
+      );
+      const got = Math.floor(r.stdout.length / frameBytes);
+      if (r.code === 0 && got > 0) {
+        return wanted.map((n) => toFrame(r.stdout, Math.min(got - 1, unique.indexOf(n))));
+      }
+    }
     const out: LumaFrame[] = [];
     for (const t of timesSec) {
       if (signal.aborted) throw abortError();
       const at = Math.max(0, Math.min(t, probe.durationSec - 0.05));
       const r = await run(
         info.ffmpeg,
-        ['-hide_banner', '-nostdin', '-v', 'error', '-ss', at.toFixed(3), '-i', path, '-frames:v', '1', '-vf', `scale=${width}:${height}:flags=bicubic,format=rgba`, '-threads', String(this.threads), '-f', 'rawvideo', 'pipe:1'],
+        ['-hide_banner', '-nostdin', '-v', 'error', '-ss', at.toFixed(3), '-i', path, '-frames:v', '1', '-vf', scale, '-threads', String(this.threads), '-f', 'rawvideo', 'pipe:1'],
         { signal, collectStdout: true },
       );
-      if (r.code !== 0 || r.stdout.length < width * height * 4) {
+      if (r.code !== 0 || r.stdout.length < frameBytes) {
         throw new SnugclipError('E_ENCODE', `Couldn't decode a frame at ${at.toFixed(2)} s for the quality check.`);
       }
-      out.push({ width, height, data: new Uint8ClampedArray(r.stdout.buffer, r.stdout.byteOffset, width * height * 4) });
+      out.push(toFrame(r.stdout, 0));
     }
     return out;
   }
