@@ -97,6 +97,11 @@ export interface EngineCapabilities {
   maxEncodeShortSide: Partial<Record<VideoCodecId, number>>;
   /** Synchronous; engines precompute. */
   canEncode(codec: VideoCodecId, w: number, h: number, bps: number): boolean;
+  /**
+   * Extension: whether an audio config really encodes (sync; engines precompute). Chrome on macOS
+   * reports AAC as supported but fails below ~48 kbps per channel. Absent = every config works.
+   */
+  canEncodeAudio?(codec: AudioCodecId, bitrate: number, channels: 1 | 2, sampleRate: number): boolean;
 }
 
 export interface Rung {

@@ -209,24 +209,37 @@ export function chooseAudio(
       bytes: Math.ceil((a.bitrate! * durationSec) / 8),
     };
   }
-  return encodeAudio(codec, abr, a.channels, a.sampleRate, durationSec);
+  return encodeAudio(codec, abr, a.channels, a.sampleRate, durationSec, caps);
 }
 
-function encodeAudio(codec: AudioCodecId, kbps: number, srcChannels: number, srcRate: number, durationSec: number): PlanAudio {
-  const channels: 1 | 2 = srcChannels <= 1 || kbps <= TUNING.monoAtOrBelow[codec] ? 1 : 2;
-  return {
+/**
+ * Encode config for a desired rung. When the engine rejects it (caps.canEncodeAudio), try mono at
+ * the same rate, then step up the ladder until something encodes. Null if nothing does.
+ */
+function encodeAudio(codec: AudioCodecId, kbps: number, srcChannels: number, srcRate: number, durationSec: number, caps?: EngineCapabilities): PlanAudio {
+  const sampleRate = audioSampleRate(codec, srcRate);
+  const make = (k: number, channels: 1 | 2): PlanAudio => ({
     mode: 'encode',
     codec,
-    bitrate: kbps * 1000,
+    bitrate: k * 1000,
     channels,
-    sampleRate: audioSampleRate(codec, srcRate),
-    bytes: Math.ceil(((kbps * 1000 * durationSec) / 8) * TUNING.audioPad),
-  };
+    sampleRate,
+    bytes: Math.ceil(((k * 1000 * durationSec) / 8) * TUNING.audioPad),
+  });
+  const preferred: 1 | 2 = srcChannels <= 1 || kbps <= TUNING.monoAtOrBelow[codec] ? 1 : 2;
+  const ok = (k: number, ch: 1 | 2) => !caps?.canEncodeAudio || caps.canEncodeAudio(codec, k * 1000, ch, sampleRate);
+  if (ok(kbps, preferred)) return make(kbps, preferred);
+  if (preferred === 2 && ok(kbps, 1)) return make(kbps, 1);
+  const up = [...TUNING.audioLadder[codec]].reverse().filter((k) => k > kbps);
+  for (const k of up) {
+    if (ok(k, 1)) return make(k, 1);
+    if (srcChannels > 1 && ok(k, 2)) return make(k, 2);
+  }
+  return make(kbps, preferred); // nothing validated: let the engine report the real error
 }
 
-function minAudioBytes(codec: AudioCodecId, durationSec: number): number {
-  const kbps = TUNING.audioLadder[codec].at(-1)!;
-  return Math.ceil(((kbps * 1000 * durationSec) / 8) * TUNING.audioPad);
+function minAudioBytes(codec: AudioCodecId, durationSec: number, srcRate: number, caps?: EngineCapabilities): number {
+  return encodeAudio(codec, TUNING.audioLadder[codec].at(-1)!, 1, srcRate, durationSec, caps).bytes;
 }
 
 /** Resolves and validates a trim against the source. Undefined when it covers the whole clip. */
@@ -271,15 +284,15 @@ export function minimumBytes(probe: Probe, options: Partial<Options>, caps: Engi
   const { codec, container } = chooseCodec(opts.codec, caps);
   const preset = target?.presetId ? getPreset(target.presetId) : undefined;
   const entries = buildRungs(probe, opts, codec, caps, preset?.maxShortSide);
-  return minimumFor(probe, opts, codec, container, entries, D, marginFor(caps, codec));
+  return minimumFor(probe, opts, codec, container, entries, D, marginFor(caps, codec), caps);
 }
 
-function minimumFor(probe: Probe, opts: Options, codec: VideoCodecId, container: ContainerId, entries: LadderEntry[], D: number, m: number): number {
+function minimumFor(probe: Probe, opts: Options, codec: VideoCodecId, container: ContainerId, entries: LadderEntry[], D: number, m: number, caps?: EngineCapabilities): number {
   const bottom = entries.at(-1)!;
   const fmin = opts.keepFps ? bottom.fps : Math.min(bottom.fps, TUNING.minFps);
   const audioCodec: AudioCodecId = container === 'webm' ? 'opus' : 'aac';
   const hasAudio = !!probe.audio && !opts.mute;
-  const aMin = hasAudio ? minAudioBytes(audioCodec, D) : 0;
+  const aMin = hasAudio ? minAudioBytes(audioCodec, D, probe.audio!.sampleRate, caps) : 0;
   const oh = overheadBytes(container, D, fmin, hasAudio ? { codec: audioCodec, sampleRate: audioSampleRate(audioCodec, probe.audio!.sampleRate) } : null);
   const vMin = (bppThresholds(codec).floor * bottom.width * bottom.height * fmin * D) / 8;
   return Math.ceil((oh + aMin + vMin) / (1 - m));
@@ -304,7 +317,7 @@ export function plan(probe: Probe, target: Target, options: Partial<Options>, ca
   let audioCodec: AudioCodecId = container === 'webm' ? 'opus' : 'aac';
   let m = marginFor(caps, codec);
   let entries = buildRungs(probe, opts, codec, caps, preset?.maxShortSide);
-  const minBytes = minimumFor(probe, opts, codec, container, entries, D, m);
+  const minBytes = minimumFor(probe, opts, codec, container, entries, D, m, caps);
 
   // Pass-through (§4.6)
   const passThrough =
@@ -397,7 +410,7 @@ export function plan(probe: Probe, target: Target, options: Partial<Options>, ca
   let idx = select(b);
   // Give the picture the audio's share before refusing (only ever lowers audio to the minimum).
   if (b.rungs[idx]!.bpp < floor && audio.mode !== 'none') {
-    const lean = encodeAudio(audioCodec, TUNING.audioLadder[audioCodec].at(-1)!, probe.audio!.channels, probe.audio!.sampleRate, D);
+    const lean = encodeAudio(audioCodec, TUNING.audioLadder[audioCodec].at(-1)!, probe.audio!.channels, probe.audio!.sampleRate, D, caps);
     if (lean.bytes < audio.bytes) {
       audio = lean;
       b = budget(audio);

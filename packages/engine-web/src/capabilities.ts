@@ -2,6 +2,7 @@
 // results at three probe sizes, so `canEncode()` can stay synchronous as the core requires.
 // Pure: the async probing lives in engine.ts.
 import type { AudioCodecId, ContainerId, EngineCapabilities, VideoCodecId } from '@snugclip/core';
+import { makeCanEncodeAudio } from './audio-probe.js';
 import { AUDIO_CODEC_IDS, containerForVideoCodec, encoderNames, VIDEO_CODEC_IDS } from './codec-strings.js';
 
 export const ENGINE_VERSION = '0.1.0';
@@ -26,6 +27,8 @@ export type EncodeTable = Record<VideoCodecId, Record<ProbeTier, boolean>>;
 export interface CapabilityInputs {
   video: EncodeTable;
   audio: Record<AudioCodecId, boolean>;
+  /** Audio configs that really encode (see audio-probe.ts); null/absent = unconstrained. */
+  audioConfigs?: ReadonlySet<string> | null;
 }
 
 export function emptyEncodeTable(): EncodeTable {
@@ -82,5 +85,6 @@ export function buildCapabilities(inputs: CapabilityInputs): EngineCapabilities 
     audioCopyWithTrim: false,
     maxEncodeShortSide: maxShortSides(inputs.video),
     canEncode: makeCanEncode(inputs.video),
+    canEncodeAudio: makeCanEncodeAudio(inputs.audioConfigs ?? null),
   };
 }

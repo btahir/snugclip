@@ -122,3 +122,19 @@ describe('impossible targets (A4)', () => {
     expect(s.video).toMatchObject({ capped: 'source-bitrate', bitrate: 4_400_000 });
   });
 });
+
+describe('engine audio constraints (canEncodeAudio)', () => {
+  // Chrome on macOS: AAC needs ≥ 48 kbps mono / ≥ 96 kbps stereo.
+  const mac = testCaps({ canEncodeAudio: (c, b, ch) => c !== 'aac' || b >= (ch === 1 ? 48_000 : 96_000) });
+  const probe = makeProbe({ durationSec: 60, audio: { codec: 'aac', channels: 2, sampleRate: 48000, bitrate: 320_000, decodable: true } });
+  it('steps a rejected stereo rung to mono, and a rejected mono rung up the ladder', () => {
+    expect(chooseAudio(probe, normalizeOptions({}), 'aac', 60, 600, mac, undefined)).toMatchObject({ bitrate: 64_000, channels: 1 });
+    expect(chooseAudio(probe, normalizeOptions({}), 'aac', 60, 100, mac, undefined)).toMatchObject({ bitrate: 48_000, channels: 1 });
+    expect(chooseAudio(probe, normalizeOptions({}), 'aac', 60, 2000, mac, undefined)).toMatchObject({ bitrate: 128_000, channels: 2 });
+  });
+  it('the minimum size uses the smallest audio config that encodes', () => {
+    expect(minimumBytes(probe, {}, mac)).toBeGreaterThan(minimumBytes(probe, {}, caps));
+    const p = plan(probe, { bytes: 1 * MB, label: 'x' }, {}, mac);
+    if (p.feasible) expect(p.audio.bitrate).toBeGreaterThanOrEqual(48_000);
+  });
+});

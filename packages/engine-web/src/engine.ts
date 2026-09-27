@@ -16,6 +16,12 @@ import type { LatencyMode } from './latency-probe.js';
 import type { OpfsSink } from './opfs.js';
 import type { PauseGate } from './pause.js';
 import { probeBlob } from './probe.js';
+import { audioConfigKey, probeAudioConfigs } from './audio-probe.js';
+import { TUNING } from '@snugclip/core';
+
+function aacLadderKeys(): string[] {
+  return TUNING.audioLadder.aac.flatMap((k) => [1, 2].flatMap((ch) => [44100, 48000].map((sr) => audioConfigKey('aac', k * 1000, ch as 1 | 2, sr))));
+}
 
 export interface WebEngineOptions {
   /**
@@ -73,7 +79,15 @@ async function probeCapabilityInputs(opts: WebEngineOptions, state: { aacPolyfil
       opts.onWarning?.({ code: 'aac-encoder-load-failed', message: e instanceof Error ? e.message : String(e) });
     }
   }
-  return { video, audio: { aac, opus } };
+  // Probe native encoders with real encodes (isConfigSupported over-reports). The polyfilled AAC
+  // encoder (WASM) handles every ladder config, so it isn't constrained.
+  let audioConfigs: Set<string> | null = null;
+  const native = (['aac', 'opus'] as const).filter((c) => (c === 'aac' ? aac && !state.aacPolyfilled : opus));
+  if (native.length && typeof AudioEncoder !== 'undefined') {
+    audioConfigs = await probeAudioConfigs(native);
+    if (state.aacPolyfilled) for (const k of aacLadderKeys()) audioConfigs.add(k);
+  }
+  return { video, audio: { aac, opus }, audioConfigs };
 }
 
 export function createWebEngine(opts: WebEngineOptions = {}): WebEngine {
