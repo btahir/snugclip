@@ -117,10 +117,10 @@ const FIXTURES = [
     id: 'F13', file: 'f13-hdr-pq-hevc-1080p-5s.mov',
     desc: 'HDR10-tagged HEVC Main10 (BT.2020 / PQ) 1920x1080 30 fps 5 s in MOV; 5 Mb/s + AAC 128k',
     steps: (o) => [[
-      '-f', 'lavfi', '-i', 'testsrc2=s=1920x1080:r=30:d=5', ...sine(5, 610),
+      // ffmpeg 8 drops -color_* output flags from lavfi frames; setparams tags the frames instead.
+      '-f', 'lavfi', '-i', 'testsrc2=s=1920x1080:r=30:d=5,setparams=color_primaries=bt2020:color_trc=smpte2084:colorspace=bt2020nc', ...sine(5, 610),
       '-c:v', 'libx265', '-preset', 'ultrafast', '-pix_fmt', 'yuv420p10le', '-tag:v', 'hvc1', '-b:v', '5000k',
       '-x265-params', 'log-level=error:vbv-maxrate=5000:vbv-bufsize=5000:strict-cbr=1:hrd=1',
-      '-color_primaries', 'bt2020', '-color_trc', 'smpte2084', '-colorspace', 'bt2020nc',
       ...aac(128), '-shortest', '-f', 'mov', o,
     ]],
   },
