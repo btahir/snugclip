@@ -1,0 +1,92 @@
+{
+  "snugclip": "probe",
+  "version": 1,
+  "results": [
+    {
+      "input": "<dir>/f01-testsrc2-1080p30-10s.mp4",
+      "probe": {
+        "container": "mp4",
+        "sizeBytes": 7844773,
+        "durationSec": 10,
+        "video": {
+          "codec": "h264",
+          "decodable": true,
+          "codedWidth": 1920,
+          "codedHeight": 1080,
+          "displayWidth": 1920,
+          "displayHeight": 1080,
+          "rotation": 0,
+          "fps": 30,
+          "hdr": false,
+          "frameCount": 300,
+          "bitrate": 6137675,
+          "bitDepth": 8
+        },
+        "audio": {
+          "codec": "aac",
+          "channels": 2,
+          "sampleRate": 48000,
+          "decodable": true,
+          "bitrate": 128126
+        }
+      }
+    },
+    {
+      "input": "<dir>/f06-rotated-1080p-10s.mp4",
+      "probe": {
+        "container": "mp4",
+        "sizeBytes": 5261728,
+        "durationSec": 10,
+        "video": {
+          "codec": "h264",
+          "decodable": true,
+          "codedWidth": 1920,
+          "codedHeight": 1080,
+          "displayWidth": 1080,
+          "displayHeight": 1920,
+          "rotation": 270,
+          "fps": 30,
+          "hdr": false,
+          "frameCount": 300,
+          "bitrate": 4071284,
+          "bitDepth": 8
+        },
+        "audio": {
+          "codec": "aac",
+          "channels": 2,
+          "sampleRate": 48000,
+          "decodable": true,
+          "bitrate": 128082
+        }
+      }
+    },
+    {
+      "input": "<dir>/f08-hevc-1080p30-10s.mov",
+      "probe": {
+        "container": "mov",
+        "sizeBytes": 5176607,
+        "durationSec": 10,
+        "video": {
+          "codec": "hevc",
+          "decodable": true,
+          "codedWidth": 1920,
+          "codedHeight": 1088,
+          "displayWidth": 1920,
+          "displayHeight": 1080,
+          "rotation": 0,
+          "fps": 30,
+          "hdr": false,
+          "frameCount": 300,
+          "bitrate": 4000631
+        },
+        "audio": {
+          "codec": "aac",
+          "channels": 2,
+          "sampleRate": 48000,
+          "decodable": true,
+          "bitrate": 128151
+        }
+      }
+    }
+  ]
+}

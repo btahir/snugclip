@@ -1,0 +1,204 @@
+{
+  "snugclip": "report",
+  "version": 1,
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "status": "fit",
+  "fits": true,
+  "passThrough": false,
+  "input": {
+    "name": "f03-screen-1080p30-30s.mp4",
+    "path": "<dir>/f03-screen-1080p30-30s.mp4",
+    "bytes": 5884295,
+    "probe": {
+      "container": "mp4",
+      "sizeBytes": 5884295,
+      "durationSec": 30,
+      "video": {
+        "codec": "h264",
+        "decodable": true,
+        "codedWidth": 1920,
+        "codedHeight": 1080,
+        "displayWidth": 1920,
+        "displayHeight": 1080,
+        "rotation": 0,
+        "fps": 30,
+        "hdr": false,
+        "frameCount": 900,
+        "bitrate": 1495650,
+        "bitDepth": 8
+      },
+      "audio": {
+        "codec": "aac",
+        "channels": 1,
+        "sampleRate": 48000,
+        "decodable": true,
+        "bitrate": 64257
+      }
+    }
+  },
+  "target": {
+    "bytes": 2000000,
+    "label": "2 MB"
+  },
+  "output": {
+    "name": "f03-screen-1080p30-30s-snug-2MB.mp4",
+    "bytes": "<≤ target>",
+    "container": "mp4",
+    "mime": "video/mp4",
+    "video": {
+      "codec": "h264",
+      "width": 1920,
+      "height": 1080,
+      "fps": 30,
+      "bitrate": "<attempt>"
+    },
+    "audio": {
+      "codec": "aac",
+      "bitrate": 48000,
+      "channels": 1
+    },
+    "durationSec": 30,
+    "path": "<dir>/f03-screen-1080p30-30s-snug-2MB.mp4"
+  },
+  "plan": {
+    "version": 1,
+    "passThrough": false,
+    "targetBytes": 2000000,
+    "marginBytes": 40000,
+    "overheadBytes": 35626,
+    "minimumBytes": 360170,
+    "durationSec": 30,
+    "container": "mp4",
+    "audio": {
+      "mode": "encode",
+      "codec": "aac",
+      "bitrate": 48000,
+      "channels": 1,
+      "sampleRate": 48000,
+      "bytes": 185400
+    },
+    "rungs": [
+      {
+        "shortSide": 1080,
+        "width": 1920,
+        "height": 1080,
+        "fps": 30,
+        "bpp": 0.007454449588477367
+      },
+      {
+        "shortSide": 720,
+        "width": 1280,
+        "height": 720,
+        "fps": 30,
+        "bpp": 0.016772511574074073
+      },
+      {
+        "shortSide": 540,
+        "width": 960,
+        "height": 540,
+        "fps": 30,
+        "bpp": 0.029817798353909467
+      },
+      {
+        "shortSide": 480,
+        "width": 854,
+        "height": 480,
+        "fps": 30,
+        "bpp": 0.03770869112672392
+      },
+      {
+        "shortSide": 360,
+        "width": 640,
+        "height": 360,
+        "fps": 30,
+        "bpp": 0.0670900462962963
+      },
+      {
+        "shortSide": 240,
+        "width": 426,
+        "height": 240,
+        "fps": 30,
+        "bpp": 0.151188836724048
+      },
+      {
+        "shortSide": 240,
+        "width": 426,
+        "height": 240,
+        "fps": 24,
+        "bpp": 0.18922078768909756
+      },
+      {
+        "shortSide": 240,
+        "width": 426,
+        "height": 240,
+        "fps": 20,
+        "bpp": 0.2272527386541471
+      },
+      {
+        "shortSide": 240,
+        "width": 426,
+        "height": 240,
+        "fps": 15,
+        "bpp": 0.30331664058424623
+      }
+    ],
+    "warnings": [],
+    "reasons": [
+      "Audio: AAC 48 kbps mono.",
+      "Video: 1920x1080 at 30 fps → 426x240 at 30 fps, H264 464 kbps (0.1512 bits per pixel; aim ≥ 0.08)."
+    ],
+    "feasible": true,
+    "video": {
+      "codec": "h264",
+      "width": 426,
+      "height": 240,
+      "fps": 30,
+      "bitrate": 463726,
+      "bpp": 0.1512,
+      "bppTier": "A",
+      "keyframeIntervalSec": 2,
+      "rungIndex": 5
+    }
+  },
+  "attempts": [
+    {
+      "purpose": "full",
+      "rung": {
+        "shortSide": 240,
+        "width": 426,
+        "height": 240,
+        "fps": 30,
+        "bpp": 0.151188836724048
+      },
+      "fits": true
+    },
+    {
+      "purpose": "full",
+      "rung": {
+        "shortSide": 1080,
+        "width": 1920,
+        "height": 1080,
+        "fps": 30,
+        "bpp": 0.007454449588477367
+      },
+      "fits": true
+    }
+  ],
+  "quality": {
+    "verdict": "great"
+  },
+  "warnings": [
+    {
+      "code": "simple-content",
+      "message": "Simple content left room to spare, so Snugclip tried a sharper 1920x1080."
+    }
+  ],
+  "engine": {
+    "id": "ffmpeg",
+    "version": "<v>",
+    "encoder": "libx264"
+  },
+  "elapsedMs": 0,
+  "minimumBytes": 360170,
+  "minimumSource": "planned"
+}

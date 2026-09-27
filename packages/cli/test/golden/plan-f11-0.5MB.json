@@ -1,0 +1,97 @@
+{
+  "snugclip": "plan",
+  "version": 1,
+  "results": [
+    {
+      "input": "<dir>/f11-long-360p30-300s.mp4",
+      "probe": {
+        "container": "mp4",
+        "sizeBytes": 13394813,
+        "durationSec": 300,
+        "video": {
+          "codec": "h264",
+          "decodable": true,
+          "codedWidth": 640,
+          "codedHeight": 360,
+          "displayWidth": 640,
+          "displayHeight": 360,
+          "rotation": 0,
+          "fps": 30,
+          "hdr": false,
+          "frameCount": 9000,
+          "bitrate": 300177,
+          "bitDepth": 8
+        },
+        "audio": {
+          "codec": "aac",
+          "channels": 1,
+          "sampleRate": 48000,
+          "decodable": true,
+          "bitrate": 48319
+        }
+      },
+      "plan": {
+        "version": 1,
+        "passThrough": false,
+        "targetBytes": 500000,
+        "marginBytes": 10000,
+        "overheadBytes": 154762,
+        "minimumBytes": 3451186,
+        "durationSec": 300,
+        "container": "mp4",
+        "audio": {
+          "mode": "encode",
+          "codec": "aac",
+          "bitrate": 24000,
+          "channels": 1,
+          "sampleRate": 48000,
+          "bytes": 927000
+        },
+        "rungs": [
+          {
+            "shortSide": 360,
+            "width": 640,
+            "height": 360,
+            "fps": 30,
+            "bpp": -0.0024913657407407406
+          },
+          {
+            "shortSide": 240,
+            "width": 426,
+            "height": 240,
+            "fps": 30,
+            "bpp": -0.00561434533124674
+          },
+          {
+            "shortSide": 240,
+            "width": 426,
+            "height": 240,
+            "fps": 24,
+            "bpp": -0.0067831898800208654
+          },
+          {
+            "shortSide": 240,
+            "width": 426,
+            "height": 240,
+            "fps": 20,
+            "bpp": -0.007952034428794993
+          },
+          {
+            "shortSide": 240,
+            "width": 426,
+            "height": 240,
+            "fps": 15,
+            "bpp": -0.010289723526343244
+          }
+        ],
+        "warnings": [],
+        "reasons": [
+          "Audio: AAC 24 kbps mono.",
+          "Too small: the smallest Snugclip can make is 3.46 MB (426x240 at 15 fps). Trim it, mute it, or pick a bigger limit."
+        ],
+        "feasible": false,
+        "video": null
+      }
+    }
+  ]
+}

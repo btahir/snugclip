@@ -1,6 +1,6 @@
 // Node-side batch runner shared by the CLI and the MCP server: input expansion (dirs, globs),
 // output naming, the no-overwrite rule, and report paths. Uses the core's runFit for the fit.
-import { globSync, existsSync, readdirSync, statSync } from 'node:fs';
+import { globSync, existsSync, mkdirSync, readdirSync, statSync } from 'node:fs';
 import { basename, dirname, extname, join, resolve } from 'node:path';
 import {
   SnugclipError,
@@ -174,6 +174,7 @@ export async function compressFiles(inputs: string[], target: Target, options: P
         const finalPath = outputPathFor(abs, target, ext, ro);
         if (resolve(finalPath) === abs) throw new SnugclipError('E_EXISTS', `The output would overwrite the input (${input}).`, { hint: 'Choose another -o/--out-dir.' });
         if (existsSync(finalPath) && !ro.overwrite) throw new SnugclipError('E_EXISTS', `${finalPath} already exists.`, { hint: 'Pass --overwrite to replace it, or choose another -o/--out-dir.' });
+        mkdirSync(dirname(finalPath), { recursive: true });
       }
       const fit = await runFit(engine, abs, target, options, {
         now,
