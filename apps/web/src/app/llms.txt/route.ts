@@ -68,6 +68,14 @@ JSON Schema: ${JOB_SCHEMA_URL}
 \`${SITE_URL}/?preset=discord&codec=h264&maxh=720\`
 Params: preset, size (e.g. 10MB; overrides preset), codec, maxh (short side), fps, keepfps=1, mute=1, start, end (seconds, applied to every dropped file), reencode=1. Invalid values are ignored with a notice. Links never carry file names.
 
+## Worked examples
+- Fit a clip for Discord and read the result: \`snugclip compress recording.mov --preset discord --json > out.json\` then \`jq '.results[0] | {status, fits, bytes: .output.bytes, quality: .quality.label}' out.json\`.
+- Find the smallest possible size without encoding: \`snugclip plan talk.mp4 --size 1MB --json | jq '.results[0].plan.minimumBytes'\`.
+- Impossible target (exit 2): raise the target to at least \`minimumBytes\`, or trim/mute and plan again: \`snugclip plan long.mp4 --size 5MB --mute --end 90 --json\`.
+- Batch a folder for email: \`snugclip compress ./recordings --preset email --out-dir ./email-ready --json\`.
+- Hand a person a ready setup: \`snugclip compress clip.mp4 --preset whatsapp --save-job clip.snugclip.json\`, or send them \`${SITE_URL}/?preset=whatsapp&maxh=720\`.
+- Full agent docs: AGENTS.md in the repository.
+
 ## Presets
 ${presets}
 

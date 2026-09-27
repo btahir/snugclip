@@ -72,3 +72,11 @@ describe('planTable', () => {
     expect(rows[0]!.videoKbps).toBeGreaterThan(rows[3]!.videoKbps);
   });
 });
+
+describe('per-page OG images', () => {
+  it('exist for every keyword page', async () => {
+    const { existsSync } = await import('node:fs');
+    const { join } = await import('node:path');
+    for (const p of KEYWORD_PAGES) expect(existsSync(join(__dirname, '..', 'public', 'og', `${p.slug}.png`)), p.slug).toBe(true);
+  });
+});

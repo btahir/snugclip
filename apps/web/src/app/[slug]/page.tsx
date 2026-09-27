@@ -28,8 +28,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     title: { absolute: p.title },
     description: p.description,
     alternates: { canonical: url },
-    openGraph: { title: p.title, description: p.description, url, type: 'website', images: [{ url: '/og/default.png', width: 1200, height: 630, alt: p.h1 }] },
-    twitter: { card: 'summary_large_image', title: p.title, description: p.description, images: ['/og/default.png'] },
+    openGraph: { title: p.title, description: p.description, url, type: 'website', images: [{ url: `/og/${p.slug}.png`, width: 1200, height: 630, alt: p.h1 }] },
+    twitter: { card: 'summary_large_image', title: p.title, description: p.description, images: [`/og/${p.slug}.png`] },
   };
 }
 
