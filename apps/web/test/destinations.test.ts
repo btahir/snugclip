@@ -31,7 +31,7 @@ describe('destinations', () => {
     expect(isValidCustomBytes(4_096_000_001)).toBe(false);
   });
   it('formats checked dates', () => {
-    expect(checkedLabel('2026-09-27')).toBe('Sep 2026');
+    expect(checkedLabel('2026-09-27')).toBe('27 Sep 2026');
   });
 });
 

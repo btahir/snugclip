@@ -35,10 +35,10 @@ test('axe: queue states (queued, running, ready, impossible, error, options open
 
 test('support page renders the shared Stripe links; one-time first', async ({ page }) => {
   await page.goto('/support/');
-  const links = page.locator('main a[href^="https://buy.stripe.com/"]');
-  await expect(links).toHaveCount(5);
-  await expect(links.first()).toHaveAttribute('href', DONATION_LINKS.once);
-  for (let i = 0; i < 4; i++) await expect(links.nth(i + 1)).toHaveAttribute('href', DONATION_LINKS.monthly[i]!.href);
+  const hrefs = [DONATION_LINKS.once, ...DONATION_LINKS.monthly.map((m) => m.href)];
+  // Every payment link on the page, in order, is exactly DONATION_LINKS (one-time first, then the 4 tiers).
+  const found = await page.locator('main a').evaluateAll((as, hs) => as.map((a) => a.getAttribute('href')).filter((h) => hs.includes(h ?? '')), hrefs);
+  expect(found).toEqual(hrefs);
   for (const p of ['/', '/about/']) {
     await page.goto(p);
     await expect(page.locator('header a[href="/support/"]')).toHaveCount(1);

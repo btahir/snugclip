@@ -140,10 +140,12 @@ export function isValidCustomBytes(bytes: number): boolean {
   return Number.isFinite(bytes) && bytes >= MB && bytes <= MAX_CUSTOM_BYTES;
 }
 
-/** Human "checked" date for preset sources: "Sep 2026". */
+/** Human "checked" date for preset sources: "27 Sep 2026" (the exact day the source was read). */
 export function checkedLabel(iso: string | null | undefined): string | null {
   if (!iso) return null;
-  const d = new Date(`${iso}T00:00:00Z`);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' });
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  if (!m) return iso;
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const month = months[Number(m[2]) - 1];
+  return month ? `${Number(m[3])} ${month} ${m[1]}` : iso;
 }

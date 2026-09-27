@@ -14,7 +14,7 @@ export function limit(id: string): string {
   return b >= 1_000_000_000 ? formatSize(b, { round: 'nearest' }) : targetLabel(b);
 }
 
-/** The date presets were verified, for copy: "Sep 2026". */
+/** The date presets were verified, for copy: "27 Sep 2026". */
 export function checked(id = 'discord'): string {
   return checkedLabel(presetInfo(id).checked) ?? '';
 }
