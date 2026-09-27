@@ -13,7 +13,7 @@
     "test": "pnpm build && vitest run",
     "test:unit": "vitest run --project core --project engine-web",
     "test:matrix": "../research/heavy.sh node scripts/fit-matrix.mjs",
-    "fixtures": "../research/heavy.sh node scripts/make-fixtures.mjs",
+    "fixtures": "../research/heavy.sh bash scripts/make-fixtures.sh",
     "licenses:check": "node scripts/check-licenses.mjs",
     "snugclip": "node packages/cli/bin/snugclip.js",
     "check:pure": "node scripts/check-pure.mjs"
