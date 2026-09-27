@@ -102,7 +102,7 @@ export function TrimTimeline({ it }: { it: Item }) {
           ref={startRef}
           className="handle"
           data-h="0"
-          style={{ left: `${pct(a)}%` }}
+          style={{ left: `max(16px, ${pct(a)}%)`, transform: 'translateX(-100%)', borderRadius: '8px 3px 3px 8px' }}
           role="slider"
           tabIndex={0}
           aria-label={t.trimmer.startHandle}
@@ -115,7 +115,7 @@ export function TrimTimeline({ it }: { it: Item }) {
         <div
           className="handle"
           data-h="1"
-          style={{ left: `${pct(b)}%` }}
+          style={{ left: `min(calc(100% - 16px), ${pct(b)}%)`, transform: 'none', borderRadius: '3px 8px 8px 3px' }}
           role="slider"
           tabIndex={0}
           aria-label={t.trimmer.endHandle}

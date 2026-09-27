@@ -1,0 +1,30 @@
+{
+  "$schema": "../../node_modules/oxlint/configuration_schema.json",
+  "plugins": [
+    "react",
+    "typescript",
+    "nextjs"
+  ],
+  "categories": {
+    "correctness": "error"
+  },
+  "env": {
+    "browser": true,
+    "es2024": true
+  },
+  "ignorePatterns": [
+    ".next/**",
+    "out/**",
+    "public/**",
+    "test-results/**",
+    "**/*.generated.ts"
+  ],
+  "rules": {
+    "no-console": "off",
+    "no-unused-vars": "error",
+    "@next/next/no-img-element": "off",
+    "react/set-state-in-effect": "off",
+    "react/refs": "off",
+    "@next/next/no-html-link-for-pages": "off"
+  }
+}

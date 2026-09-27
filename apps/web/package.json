@@ -14,7 +14,11 @@
     "icons": "node scripts/make-icons.mjs",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "test:e2e": "playwright test"
+    "test:e2e": "pnpm build && ../../../research/heavy.sh playwright test --workers=1",
+    "lint": "../../node_modules/.bin/oxlint -c .oxlintrc.json --deny-warnings src test tests scripts",
+    "pretest": "node scripts/copy-assets.mjs",
+    "pretypecheck": "node scripts/copy-assets.mjs",
+    "shots": "node scripts/shots.mjs"
   },
   "dependencies": {
     "@fontsource-variable/atkinson-hyperlegible-next": "^5.3.0",
