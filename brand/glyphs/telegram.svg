@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
+  <!-- Channel messaging (used for Telegram). A send arrow in a circle; deliberately not a paper plane. Snugclip generic glyph, MIT. Colour comes from currentColor. -->
+  <circle fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" cx="12" cy="12" r="9"/><path fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" d="M12 16.5v-9M8.2 11.2 12 7.4l3.8 3.8"/>
+</svg>

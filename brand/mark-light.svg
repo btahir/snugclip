@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48" role="img" aria-label="Snugclip">
+  <!-- Snugclip mark for light backgrounds: a glass filled to just under the limit line. (c) Snugclip contributors, MIT. -->
+  <defs>
+    <clipPath id="m-in"><path d="M9.5 8H38.5L36.1 35.4A7 7 0 0 1 29.1 41.8H18.9A7 7 0 0 1 11.9 35.4Z"/></clipPath>
+    <linearGradient id="m-liq" x1="0" y1="20" x2="0" y2="42" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#5FD6C6"/><stop offset=".45" stop-color="#1C9F92"/></linearGradient>
+    <mask id="m-cut" maskUnits="userSpaceOnUse" x="0" y="0" width="48" height="48"><rect width="48" height="48" fill="#fff"/><path d="M21.2 28.4v8.2c0 .8.9 1.3 1.6.9l6.6-4.1c.6-.4.6-1.3 0-1.7l-6.6-4.1c-.7-.4-1.6.1-1.6.8Z" fill="#000"/></mask>
+  </defs>
+  <g clip-path="url(#m-in)"><path d="M5 23.6C10.5 21 15.6 21 21 23.6S31.5 26.2 37 23.6 45 21 48 22.4V48H0V22.4C1.6 22.2 3.3 22.6 5 23.6Z" fill="url(#m-liq)" mask="url(#m-cut)"/></g>
+  <path d="M9.5 8 11.9 35.4A7 7 0 0 0 18.9 41.8H29.1A7 7 0 0 0 36.1 35.4L38.5 8" fill="none" stroke="#132730" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M5 15.5H43" stroke="#D2453A" stroke-width="3.2" stroke-linecap="round"/>
+</svg>

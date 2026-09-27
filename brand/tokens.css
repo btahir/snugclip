@@ -1,0 +1,140 @@
+/* Snugclip design tokens: "Fill Line".
+   Light is the default. Dark follows the OS; [data-theme="light"|"dark"] on <html> overrides it.
+   Fonts are self-hosted (SIL OFL 1.1), and no font CDN is allowed:
+     Outfit                      -> @fontsource-variable/outfit
+     Atkinson Hyperlegible Next  -> @fontsource-variable/atkinson-hyperlegible-next
+     JetBrains Mono              -> @fontsource-variable/jetbrains-mono
+   Contrast: every *text* token pair below is at least 4.5:1 on bg, surface, surface-2 and sunk.
+   MIT, Snugclip contributors. */
+
+:root {
+  /* Surfaces */
+  --sn-bg: #F5F1E9;          /* oat page */
+  --sn-bg-2: #EDE7DB;
+  --sn-surface: #FFFFFF;     /* cards, target bar */
+  --sn-surface-2: #F7F4EE;   /* review side panel, chips */
+  --sn-sunk: #EFEAE0;        /* tracks, soft buttons */
+  --sn-line: #E5DFD3;        /* hairlines */
+  --sn-line-2: #D6CEBF;      /* control borders, dashed drop zone */
+  --sn-scrim: rgba(10, 20, 25, 0.55);
+
+  /* Text */
+  --sn-ink: #132730;
+  --sn-ink-2: #3D525A;
+  --sn-ink-3: #56696F;       /* smallest allowed text colour */
+
+  /* Brand */
+  --sn-brand: #08756F;       /* primary buttons, selected chip, links */
+  --sn-brand-ink: #FFFFFF;   /* text on brand */
+  --sn-brand-soft: #DDF1EC;
+
+  /* Meter (graphics only; never text) */
+  --sn-liquid-top: #6ADBCB;
+  --sn-liquid: #1C9F92;
+  --sn-liquid-deep: #0E8C80;
+  --sn-glass: rgba(19, 39, 48, 0.16);   /* tube outline, ticks */
+
+  /* The limit. Coral means "the line" and nothing else. */
+  --sn-limit: #D2453A;       /* the line itself */
+  --sn-limit-text: #B8392F;  /* "10 MB" text next to it */
+  --sn-limit-soft: #FBE3DF;
+
+  /* Status */
+  --sn-ok: #0B6E4F;   --sn-ok-soft: #DDF1E6;     /* Looks great, spare room */
+  --sn-warn: #9A5B07; --sn-warn-soft: #FBEBD2;   /* Softer still clear, impossible target */
+  --sn-bad: #B4372C;  --sn-bad-soft: #FBE3DF;    /* real errors only (decode failed, crash) */
+  --sn-info: #2553B8; --sn-info-soft: #E2EAFB;
+
+  --sn-focus: #1F5FD6;
+
+  /* Type */
+  --sn-font-display: "Outfit Variable", "Outfit", ui-rounded, system-ui, sans-serif;
+  --sn-font-ui: "Atkinson Hyperlegible Next Variable", "Atkinson Hyperlegible Next", system-ui, sans-serif;
+  --sn-font-mono: "JetBrains Mono Variable", "JetBrains Mono", ui-monospace, "SF Mono", monospace;
+
+  --sn-text-2xs: 0.75rem;    /* 12  mono meta */
+  --sn-text-xs: 0.8125rem;   /* 13  captions */
+  --sn-text-sm: 0.90625rem;  /* 14.5 buttons, chips */
+  --sn-text-md: 0.96875rem;  /* 15.5 body */
+  --sn-text-lg: 1.0625rem;   /* 17  card titles */
+  --sn-text-xl: 1.5rem;      /* 24  section titles */
+  --sn-text-2xl: 2rem;       /* 32  page titles (tool) */
+  --sn-text-3xl: 2.5rem;     /* 40  result number */
+  --sn-text-4xl: 3.5rem;     /* 56  landing hero */
+  --sn-leading-tight: 1.1;
+  --sn-leading: 1.5;
+
+  /* Space (4 px base) */
+  --sn-space-1: 4px;  --sn-space-2: 8px;  --sn-space-3: 12px; --sn-space-4: 16px;
+  --sn-space-5: 20px; --sn-space-6: 24px; --sn-space-8: 32px; --sn-space-10: 40px;
+  --sn-space-12: 48px; --sn-space-16: 64px;
+  --sn-page-max: 1080px;
+  --sn-gutter: 24px;         /* 16px under 760px */
+
+  /* Radii */
+  --sn-radius-xs: 6px;   /* mini glass top, tags */
+  --sn-radius-sm: 10px;  /* thumbnails */
+  --sn-radius-md: 14px;  /* compare view, notices */
+  --sn-radius-lg: 22px;  /* cards, target bar, drop zone */
+  --sn-radius-pill: 999px;
+
+  /* Elevation */
+  --sn-shadow-1: 0 1px 2px rgba(19, 39, 48, 0.06), 0 1px 1px rgba(19, 39, 48, 0.04);
+  --sn-shadow-2: 0 1px 2px rgba(19, 39, 48, 0.05), 0 12px 32px -14px rgba(19, 39, 48, 0.22);
+  --sn-shadow-3: 0 2px 4px rgba(19, 39, 48, 0.06), 0 24px 56px -20px rgba(19, 39, 48, 0.32);
+  --sn-shadow-brand: 0 6px 16px -8px rgba(8, 117, 111, 0.8);
+  --sn-ring: 0 0 0 2px var(--sn-bg), 0 0 0 4px var(--sn-focus);
+
+  /* Motion */
+  --sn-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --sn-ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --sn-ease-settle: linear(0, 0.36 8%, 0.82 20%, 1.04 32%, 1.07 38%, 1.02 52%, 0.99 66%, 1); /* pour + one slosh */
+  --sn-dur-1: 120ms;  /* press, hover */
+  --sn-dur-2: 200ms;  /* chips, toggles */
+  --sn-dur-3: 320ms;  /* card expand, drawer */
+  --sn-dur-settle: 720ms; /* meter settle */
+
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --sn-bg: #0B1518; --sn-bg-2: #0F1C20; --sn-surface: #12232A; --sn-surface-2: #162A31; --sn-sunk: #0E1D22;
+    --sn-line: #203740; --sn-line-2: #2C4750; --sn-scrim: rgba(0, 0, 0, 0.6);
+    --sn-ink: #E9F3F0; --sn-ink-2: #B6C8C4; --sn-ink-3: #8DA39E;
+    --sn-brand: #52DCCB; --sn-brand-ink: #062320; --sn-brand-soft: #123A38;
+    --sn-liquid-top: #7EF0DF; --sn-liquid: #33C8B7; --sn-liquid-deep: #16968A; --sn-glass: rgba(233, 243, 240, 0.18);
+    --sn-limit: #FF8073; --sn-limit-text: #FF8073; --sn-limit-soft: #3A1E1D;
+    --sn-ok: #6FE0AE; --sn-ok-soft: #133528; --sn-warn: #F2B866; --sn-warn-soft: #3A2A12;
+    --sn-bad: #FF8A7E; --sn-bad-soft: #3A1E1D; --sn-info: #9DB8FF; --sn-info-soft: #18264A;
+    --sn-focus: #8DB0FF;
+    --sn-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --sn-shadow-2: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 16px 40px -18px rgba(0, 0, 0, 0.7);
+    --sn-shadow-3: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 28px 64px -20px rgba(0, 0, 0, 0.8);
+    --sn-shadow-brand: 0 6px 18px -8px rgba(82, 220, 203, 0.55);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --sn-bg: #0B1518; --sn-bg-2: #0F1C20; --sn-surface: #12232A; --sn-surface-2: #162A31; --sn-sunk: #0E1D22;
+  --sn-line: #203740; --sn-line-2: #2C4750; --sn-scrim: rgba(0, 0, 0, 0.6);
+  --sn-ink: #E9F3F0; --sn-ink-2: #B6C8C4; --sn-ink-3: #8DA39E;
+  --sn-brand: #52DCCB; --sn-brand-ink: #062320; --sn-brand-soft: #123A38;
+  --sn-liquid-top: #7EF0DF; --sn-liquid: #33C8B7; --sn-liquid-deep: #16968A; --sn-glass: rgba(233, 243, 240, 0.18);
+  --sn-limit: #FF8073; --sn-limit-text: #FF8073; --sn-limit-soft: #3A1E1D;
+  --sn-ok: #6FE0AE; --sn-ok-soft: #133528; --sn-warn: #F2B866; --sn-warn-soft: #3A2A12;
+  --sn-bad: #FF8A7E; --sn-bad-soft: #3A1E1D; --sn-info: #9DB8FF; --sn-info-soft: #18264A;
+  --sn-focus: #8DB0FF;
+  --sn-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --sn-shadow-2: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 16px 40px -18px rgba(0, 0, 0, 0.7);
+  --sn-shadow-3: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 28px 64px -20px rgba(0, 0, 0, 0.8);
+  --sn-shadow-brand: 0 6px 18px -8px rgba(82, 220, 203, 0.55);
+  color-scheme: dark;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --sn-dur-1: 0ms; --sn-dur-2: 0ms; --sn-dur-3: 0ms; --sn-dur-settle: 0ms;
+    --sn-ease-settle: linear;
+  }
+}

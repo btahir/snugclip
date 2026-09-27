@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Snugclip app icon source. Full-bleed background; the mark sits inside the central 66% so it survives maskable cropping (safe zone r=205). Export PNGs at 192/512 and a 180 apple-touch icon from this file. MIT. -->
+  <defs>
+    <radialGradient id="bg" cx=".3" cy=".2" r="1.1"><stop offset="0" stop-color="#17343D"/><stop offset="1" stop-color="#0B1A20"/></radialGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <g transform="translate(96 88) scale(6.6667)">
+    <defs>
+    <clipPath id="p-in"><path d="M9.5 8H38.5L36.1 35.4A7 7 0 0 1 29.1 41.8H18.9A7 7 0 0 1 11.9 35.4Z"/></clipPath>
+    <linearGradient id="p-liq" x1="0" y1="20" x2="0" y2="42" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#7EF0DF"/><stop offset=".45" stop-color="#33C8B7"/></linearGradient>
+    <mask id="p-cut" maskUnits="userSpaceOnUse" x="0" y="0" width="48" height="48"><rect width="48" height="48" fill="#fff"/><path d="M21.2 28.4v8.2c0 .8.9 1.3 1.6.9l6.6-4.1c.6-.4.6-1.3 0-1.7l-6.6-4.1c-.7-.4-1.6.1-1.6.8Z" fill="#000"/></mask>
+  </defs>
+  <g clip-path="url(#p-in)"><path d="M5 23.6C10.5 21 15.6 21 21 23.6S31.5 26.2 37 23.6 45 21 48 22.4V48H0V22.4C1.6 22.2 3.3 22.6 5 23.6Z" fill="url(#p-liq)" mask="url(#p-cut)"/></g>
+  <path d="M9.5 8 11.9 35.4A7 7 0 0 0 18.9 41.8H29.1A7 7 0 0 0 36.1 35.4L38.5 8" fill="none" stroke="#E9F3F0" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M5 15.5H43" stroke="#FF8073" stroke-width="3.4" stroke-linecap="round"/>
+  </g>
+</svg>

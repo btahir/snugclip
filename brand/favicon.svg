@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="32" height="32">
+  <!-- Snugclip favicon. Heavier strokes and no play cut so it reads at 16 px. Follows the OS theme. MIT. -->
+  <style>
+    .g { stroke: #132730; } .l { stroke: #D2453A; } .q { fill: #1C9F92; }
+    @media (prefers-color-scheme: dark) { .g { stroke: #E9F3F0; } .l { stroke: #FF8073; } .q { fill: #33C8B7; } }
+  </style>
+  <defs><clipPath id="f"><path d="M9.5 8H38.5L36.1 35.4A7 7 0 0 1 29.1 41.8H18.9A7 7 0 0 1 11.9 35.4Z"/></clipPath></defs>
+  <g clip-path="url(#f)"><path class="q" d="M0 24.5C8 21.5 16 21.5 24 24.5S40 27.5 48 24.5V48H0Z"/></g>
+  <path class="g" d="M9.5 8 11.9 35.4A7 7 0 0 0 18.9 41.8H29.1A7 7 0 0 0 36.1 35.4L38.5 8" fill="none" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round"/>
+  <path class="l" d="M4 15.5H44" stroke-width="4.6" stroke-linecap="round"/>
+</svg>
