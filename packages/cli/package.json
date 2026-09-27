@@ -1,0 +1,50 @@
+{
+  "name": "snugclip",
+  "version": "0.1.0",
+  "description": "Fit any video under an exact size limit. Never outputs a file over it.",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "bin",
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --root ../.. --project cli"
+  },
+  "bin": {
+    "snugclip": "./bin/snugclip.js"
+  },
+  "dependencies": {
+    "@snugclip/core": "workspace:*",
+    "@snugclip/engine-ffmpeg": "workspace:*",
+    "@snugclip/mcp": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0"
+  },
+  "keywords": [
+    "video",
+    "compress",
+    "ffmpeg",
+    "discord",
+    "file-size",
+    "cli",
+    "mcp"
+  ],
+  "engines": {
+    "node": ">=22.12"
+  }
+}

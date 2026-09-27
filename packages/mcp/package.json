@@ -1,0 +1,39 @@
+{
+  "name": "@snugclip/mcp",
+  "version": "0.1.0",
+  "description": "Local stdio MCP server for Snugclip: compress_video, plan_compression, probe_video, list_presets.",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "bin",
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --root ../.. --project mcp"
+  },
+  "bin": {
+    "snugclip-mcp": "./bin/snugclip-mcp.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.1",
+    "@snugclip/core": "workspace:*",
+    "@snugclip/engine-ffmpeg": "workspace:*",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0"
+  }
+}
