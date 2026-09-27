@@ -19,7 +19,7 @@ const Q: Record<string, { cls: string; label: string; sub: string; icon: IconNam
 };
 
 function Details({ r, onClose }: { r: Report; onClose: () => void }) {
-  const { showToast } = useTool();
+  const { showToast, engineName } = useTool();
   const o = r.output;
   const q = r.quality;
   const full = r.attempts.filter((a) => a.purpose !== 'calibration');
@@ -41,6 +41,7 @@ function Details({ r, onClose }: { r: Report; onClose: () => void }) {
   if (cal.length) rows.push([t.details.calibration, String(cal.length)]);
   if (r.complexity) rows.push([t.details.motion, r.complexity]);
   if (r.engine.encoder) rows.push([t.details.encoder, r.engine.encoder]);
+  if (engineName) rows.push([t.details.engine, engineName]);
   if (o) rows.push([t.details.exact, `${o.bytes.toLocaleString('en-US')} B`]);
   rows.push([t.details.target, `${r.target.bytes.toLocaleString('en-US')} B`]);
   rows.push([t.details.time, formatDuration(r.elapsedMs / 1000)]);

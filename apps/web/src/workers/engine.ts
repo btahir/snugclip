@@ -1,12 +1,15 @@
-// Picks the Engine the worker runs. Prefers @snugclip/engine-web; falls back to the interim
-// mediabunny engine in this app until engine-web exports `createWebEngine`.
-import type { Engine } from '@snugclip/core';
+// The Engine the worker runs: @snugclip/engine-web (WebCodecs via mediabunny), with the AAC
+// encoder served unmodified from our own origin and a pause gate the page controls.
+import { cleanupOpfsOutputs, createPauseController, createWebEngine, type WebEngine } from '@snugclip/engine-web';
 import { AAC_ENCODER_URL } from '@/config/vendor.generated';
-import { InterimWebEngine } from './interim-engine';
 
-export type PausableEngine = Engine<Blob, Blob> & { pause?: () => void; resume?: () => void };
+export type PausableEngine = WebEngine & { pause: () => void; resume: () => void };
 
 export async function loadEngine(): Promise<{ engine: PausableEngine; name: string }> {
-  void AAC_ENCODER_URL;
-  return { engine: new InterimWebEngine(), name: 'interim' };
+  await cleanupOpfsOutputs().catch(() => {});
+  const ctl = createPauseController();
+  const engine = createWebEngine({ aacEncoderUrl: AAC_ENCODER_URL, pause: ctl.gate }) as PausableEngine;
+  engine.pause = () => ctl.pause();
+  engine.resume = () => ctl.resume();
+  return { engine, name: 'engine-web' };
 }

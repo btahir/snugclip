@@ -212,6 +212,7 @@ export const en = {
     calibration: 'Calibration',
     motion: 'Motion',
     encoder: 'Encoder',
+    engine: 'Engine',
     time: 'Time taken',
     target: 'Target',
     exact: 'Exact size',

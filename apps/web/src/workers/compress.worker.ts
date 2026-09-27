@@ -2,7 +2,7 @@
 // The compression worker: runs core `runFit()` with the web Engine off the main thread so the
 // page stays responsive. One compression at a time (the page queues them); probes and
 // thumbnails can run alongside.
-import { isSnugclipError, runFit, type EngineCapabilities } from '@snugclip/core';
+import { TUNING, isSnugclipError, runFit, type EngineCapabilities } from '@snugclip/core';
 import { CanvasSink, ALL_FORMATS, BlobSource, Input } from 'mediabunny';
 import { loadEngine, type PausableEngine } from './engine';
 import type { FromWorker, ToWorker, WireCaps, WireError } from './protocol';
@@ -66,7 +66,7 @@ self.onmessage = async (ev: MessageEvent<ToWorker>) => {
         const { engine, name } = await getEngine();
         const caps = await engine.capabilities();
         const ok = caps.videoCodecs.includes('h264') || caps.videoCodecs.includes('vp9');
-        post({ type: 'init', rid: msg.rid, caps: wireCaps(caps), supported: ok, ...(ok ? {} : { reason: 'no-encoder' }), engine: name });
+        post({ type: 'init', rid: msg.rid, caps: wireCaps(caps), supported: ok, ...(ok ? {} : { reason: 'no-encoder' }), engine: `${name} ${caps.version} · ${engine.latencyMode} latency${engine.aacPolyfilled ? ' · AAC from /vendor' : ''}` });
       } catch (e) {
         post({ type: 'init', rid: msg.rid, caps: null, supported: false, reason: toWire(e).message, engine: 'none' });
       }
@@ -99,7 +99,7 @@ self.onmessage = async (ev: MessageEvent<ToWorker>) => {
         signal: ctl.signal,
         inputName: msg.name,
         ...(msg.probe ? { probe: msg.probe } : {}),
-        stallMs: 20_000,
+        stallMs: TUNING.stallMs.web,
         timers: { setTimeout: (fn, ms) => setTimeout(fn, ms), clearTimeout: (h) => clearTimeout(h as number) },
         onProgress: (p) => {
           const t = Date.now();
