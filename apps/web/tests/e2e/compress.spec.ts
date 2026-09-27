@@ -174,7 +174,6 @@ test('trim a refused clip until it fits, then it compresses', async ({ page }) =
 });
 
 test('tight budget with sound (AAC below 48 kbps) still fits', async ({ page }) => {
-  // Currently red: engine-web real encodes fail for AAC < 48 kbps (logged for builder A).
   await page.goto('/?size=450KB');
   await ready(page);
   await drop(page, [fx('f01-testsrc2-1080p30-10s.mp4')]);

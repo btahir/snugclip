@@ -47,7 +47,7 @@ const errors = [];
         await shot('home-empty', false);
       }
       if (only.includes('queue')) {
-        await page.goto(base + '/?size=2MB&mute=1', { waitUntil: 'load' });
+        await page.goto(base + '/?size=2MB', { waitUntil: 'load' });
         await ready();
         await page.setInputFiles('[data-testid="file-input"]', [
           `${FIX}/f01-testsrc2-1080p30-10s.mp4`,
