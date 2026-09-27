@@ -1,6 +1,6 @@
 // A5: fit-loop state machine driven through runFit with scripted fake engines.
 import { describe, expect, it } from 'vitest';
-import { MB, applyResult, initFitState, nextStep, plan, runFit, type FitProgress, type Report } from '../src/index.js';
+import { MB, applyResult, initFitState, isNativeAacSafe, nextStep, plan, runFit, type FitProgress, type Report } from '../src/index.js';
 import { FakeEngine, makeProbe, testCaps, webCaps, type RateModel } from './fake-engine.js';
 
 const nodeTimers = { setTimeout: (fn: () => void, ms: number) => setTimeout(fn, ms), clearTimeout: (h: unknown) => clearTimeout(h as ReturnType<typeof setTimeout>) };
@@ -187,8 +187,14 @@ describe('fit loop', () => {
         splitBytes: rnd() < 0.5,
       };
       const probe = makeProbe({ durationSec: 5 + rnd() * 600, fps: rnd() < 0.3 ? 60 : 30, width: rnd() < 0.5 ? 1920 : 1280, height: rnd() < 0.5 ? 1080 : 720 });
-      const r = await run(model, { probe, target: Math.round((1 + rnd() * 60) * MB), caps: rnd() < 0.5 ? testCaps() : webCaps() });
+      const pick = rnd();
+      const caps = pick < 0.33 ? testCaps() : pick < 0.66 ? webCaps() : webCaps({ canEncodeAudio: (c, b, ch, sr) => c !== 'aac' || isNativeAacSafe(b, ch, sr) });
+      const r = await run(model, { probe, target: Math.round((1 + rnd() * 60) * MB), caps });
       invariants(r);
+      if (pick >= 0.66 && r.report.plan?.audio.mode === 'encode') {
+        const a = r.report.plan.audio;
+        expect(isNativeAacSafe(a.bitrate!, a.channels!, a.sampleRate!)).toBe(true);
+      }
       statuses[r.report.status] = (statuses[r.report.status] ?? 0) + 1;
     }
     expect(statuses.fit).toBeGreaterThan(500);

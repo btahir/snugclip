@@ -103,7 +103,11 @@ function defaultDeps(): AacLoaderDeps {
  * registers it. Throws with a plain message on any failure.
  */
 export async function loadAacEncoder(url: string, deps: Partial<AacLoaderDeps> = {}): Promise<void> {
-  const d = { ...defaultDeps(), ...deps };
+  const base = { ...defaultDeps(), ...deps };
+  // Intercept the bundle's registerEncoder(AacEncoder) and register a subclass whose static
+  // supports() also consults the current route, so native AAC keeps the configs it handles safely.
+  const realRegister = base.namespace.registerEncoder as (e: unknown) => void;
+  const d = { ...base, namespace: { ...base.namespace, registerEncoder: (enc: unknown) => realRegister(routedEncoder(enc)) } };
   const res = await d.fetch(url);
   if (!res.ok) throw new Error(`Couldn't load the AAC encoder (HTTP ${res.status}).`);
   const text = await res.text();
@@ -125,6 +129,30 @@ export async function loadAacEncoder(url: string, deps: Partial<AacLoaderDeps> =
     for (const u of urls) d.revokeObjectURL(u);
     if (!had) delete g[SHIM_GLOBAL_KEY];
   }
+}
+
+/** Encoder configs the WASM AAC encoder may take. Default: all (browsers without native AAC). */
+let aacRoute: (config: { bitrate?: number; numberOfChannels: number; sampleRate: number }) => boolean = () => true;
+
+/** Sets which AAC configs go to the WASM encoder (the engine points this at its routing state). */
+export function setAacRoute(route: typeof aacRoute): void {
+  aacRoute = route;
+}
+
+type EncoderClass = { prototype: unknown; supports(codec: string, config: { bitrate?: number; numberOfChannels: number; sampleRate: number }): boolean };
+
+/** Wraps a CustomAudioEncoder class so supports() also requires the current AAC route. */
+export function routedEncoder(enc: unknown): unknown {
+  if (typeof enc !== 'function' || !((enc as unknown as EncoderClass).prototype instanceof CustomAudioEncoder)) return enc;
+  // The base is a concrete CustomAudioEncoder subclass from the bundle; typed as such for extends.
+  const Base = enc as unknown as new () => CustomAudioEncoder & { init(): void; encode(): void; flush(): void; close(): void };
+  const baseSupports = (enc as unknown as EncoderClass).supports.bind(enc);
+  class RoutedAacEncoder extends Base {
+    static supports(codec: string, config: { bitrate?: number; numberOfChannels: number; sampleRate: number }): boolean {
+      return baseSupports(codec, config) && (codec !== 'aac' || aacRoute(config));
+    }
+  }
+  return RoutedAacEncoder;
 }
 
 const loaded = new Map<string, Promise<void>>();

@@ -60,6 +60,14 @@ export const TUNING = {
    */
   rungUp: { usedBelow: 0.5, pixelExponent: 0.9 },
 
+  /**
+   * Native (WebCodecs) AAC allowlist. On macOS 27, Chromium's AudioEncoder AAC at low bitrates
+   * (32k mono/stereo at 44.1/48 kHz, 48k stereo and 64k stereo at 44.1 kHz) aborts the GPU process,
+   * which takes down every later encode in the tab (reproduced 2026-09-27 in headless Chrome 154 and
+   * Chromium 152; isConfigSupported still says "supported"). 96 kbps and above were fine in every
+   * channel/rate combination. Below this, engines must use the WASM AAC encoder or not use AAC.
+   */
+  nativeAacSafe: { minBitrate: 96_000, channels: [1, 2] as readonly number[], sampleRates: [44100, 48000] as readonly number[] },
   maxAttempts: { twoPass: 3, onePass: 4, limit: 8 },
   stallMs: { web: 20_000, ffmpeg: 60_000 },
 

@@ -21,7 +21,8 @@
     "test:matrix:cli": "pnpm build && node scripts/fit-matrix.mjs",
     "gen:schema": "pnpm --filter @snugclip/core build && node scripts/gen-schema.mjs",
     "snugclip-mcp": "node packages/mcp/bin/snugclip-mcp.js",
-    "lint": "oxlint -c .oxlintrc.json --deny-warnings packages scripts"
+    "lint": "oxlint -c .oxlintrc.json --deny-warnings packages scripts",
+    "test:browser:engine": "../research/heavy.sh node packages/engine-web/browser-check/run.mjs"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

@@ -3,7 +3,7 @@
 // owns the worker and calls core runFit() inside it.
 import type { AbortSignalLike, EncodePlan, EncodeProgress, EncodeResult, Engine, EngineCapabilities, LumaFrame, Probe } from '@snugclip/core';
 import { canEncodeAudio, canEncodeVideo, Logging, LogLevel, Quality } from 'mediabunny';
-import { loadAacEncoderOnce } from './aac-loader.js';
+import { loadAacEncoderOnce, setAacRoute } from './aac-loader.js';
 import type { AacLoaderDeps } from './aac-loader.js';
 import { buildCapabilities, emptyEncodeTable, PROBE_TIERS, probeBitrate } from './capabilities.js';
 import type { CapabilityInputs } from './capabilities.js';
@@ -16,18 +16,16 @@ import type { LatencyMode } from './latency-probe.js';
 import type { OpfsSink } from './opfs.js';
 import type { PauseGate } from './pause.js';
 import { probeBlob } from './probe.js';
-import { audioConfigKey, probeAudioConfigs } from './audio-probe.js';
-import { TUNING } from '@snugclip/core';
-
-function aacLadderKeys(): string[] {
-  return TUNING.audioLadder.aac.flatMap((k) => [1, 2].flatMap((ch) => [44100, 48000].map((sr) => audioConfigKey('aac', k * 1000, ch as 1 | 2, sr))));
-}
+import { aacNeedsWasm, type AacRouting } from './aac-routing.js';
+import { isAbortError, SnugclipError } from '@snugclip/core';
 
 export interface WebEngineOptions {
   /**
-   * URL of `@mediabunny/aac-encoder`'s bundle, served unmodified by the app. Loaded only when the
-   * browser has no native AAC encoder (Firefox, Safari < 26), at capabilities() time, so a failed
-   * load lets the planner fall back to WebM (VP9 + Opus).
+   * URL of `@mediabunny/aac-encoder`'s bundle, served unmodified by the app. It encodes every AAC
+   * config native AAC can't do safely (below 96 kbps; core TUNING.nativeAacSafe) and all AAC when
+   * the browser has none (Firefox, Safari < 26). Loaded at capabilities() time only when there is no
+   * native AAC; otherwise lazily, on the first encode that needs it. Without it, AAC budgets below
+   * 96 kbps are avoided by the planner.
    */
   aacEncoderUrl?: string;
   /** Awaited between encode chunks; see PauseGate. */
@@ -43,11 +41,20 @@ export interface WebEngineOptions {
 export interface WebEngine extends Engine<Blob, Blob> {
   /** Latency mode chosen by the stall probe (known after capabilities()). */
   readonly latencyMode: LatencyMode;
-  /** Whether AAC comes from the lazily loaded encoder rather than the browser. */
+  /** Whether the WASM AAC encoder has been loaded (it takes only configs native AAC can't do safely). */
   readonly aacPolyfilled: boolean;
+  /** AAC encoder used by the last encode: native WebCodecs, WASM, or none. */
+  readonly lastAudioEncoder: 'native' | 'wasm' | null;
 }
 
-async function probeCapabilityInputs(opts: WebEngineOptions, state: { aacPolyfilled: boolean }): Promise<CapabilityInputs> {
+interface EngineState {
+  latency: LatencyMode;
+  aacPolyfilled: boolean;
+  aac: AacRouting;
+  lastAudioEncoder: 'native' | 'wasm' | null;
+}
+
+async function probeCapabilityInputs(opts: WebEngineOptions, state: EngineState): Promise<CapabilityInputs> {
   const video = emptyEncodeTable();
   if (typeof VideoEncoder !== 'undefined') {
     await Promise.all(
@@ -67,34 +74,54 @@ async function probeCapabilityInputs(opts: WebEngineOptions, state: { aacPolyfil
       ),
     );
   }
+  // Audio: isConfigSupported only (mediabunny's canEncodeAudio). No AudioEncoder is ever created
+  // here: low-bitrate native AAC encodes can abort the GPU process (core TUNING.nativeAacSafe).
+  // Checked before any WASM registration so the answer reflects the browser alone.
   const audioOpts = { numberOfChannels: 2, sampleRate: 48000, quality: new Quality({ bitrate: 128_000 }) };
   const check = (c: 'aac' | 'opus') => canEncodeAudio(c, audioOpts).catch(() => false);
-  let [aac, opus] = await Promise.all([check('aac'), check('opus')]);
-  if (!aac && opts.aacEncoderUrl) {
+  const [nativeAac, opus] = await Promise.all([check('aac'), check('opus')]);
+  state.aac.native = nativeAac;
+  state.aac.wasmAvailable = !!opts.aacEncoderUrl;
+  if (!nativeAac && opts.aacEncoderUrl) {
+    // No native AAC at all (Firefox, Safari < 26): every AAC encode needs WASM, so load it now and
+    // let a failure steer the planner to WebM.
     try {
-      await loadAacEncoderOnce(opts.aacEncoderUrl, opts.aacLoaderDeps);
-      aac = await check('aac');
-      state.aacPolyfilled = aac;
+      await ensureWasmAac(opts, state);
     } catch (e) {
+      state.aac.wasmAvailable = false;
       opts.onWarning?.({ code: 'aac-encoder-load-failed', message: e instanceof Error ? e.message : String(e) });
     }
   }
-  // Probe native encoders with real encodes (isConfigSupported over-reports). The polyfilled AAC
-  // encoder (WASM) handles every ladder config, so it isn't constrained.
-  let audioConfigs: Set<string> | null = null;
-  const native = (['aac', 'opus'] as const).filter((c) => (c === 'aac' ? aac && !state.aacPolyfilled : opus));
-  if (native.length && typeof AudioEncoder !== 'undefined') {
-    audioConfigs = await probeAudioConfigs(native);
-    if (state.aacPolyfilled) for (const k of aacLadderKeys()) audioConfigs.add(k);
+  return { video, audio: { aac: state.aac.native || state.aac.wasmAvailable, opus }, aac: state.aac };
+}
+
+async function ensureWasmAac(opts: WebEngineOptions, state: EngineState): Promise<void> {
+  if (!opts.aacEncoderUrl || !state.aac.wasmAvailable) {
+    throw new SnugclipError('E_UNSUPPORTED_ENCODER', 'This audio needs the WASM AAC encoder, which is not available.');
   }
-  return { video, audio: { aac, opus }, audioConfigs };
+  try {
+    await loadAacEncoderOnce(opts.aacEncoderUrl, opts.aacLoaderDeps);
+  } catch (e) {
+    state.aac.wasmAvailable = false;
+    throw new SnugclipError('E_UNSUPPORTED_ENCODER', `The AAC encoder couldn't be loaded: ${e instanceof Error ? e.message : String(e)}`);
+  }
+  state.aacPolyfilled = true;
+}
+
+/** Whether an encode plan will use the WASM AAC encoder, native AAC, or no AAC encoder. */
+function aacPathFor(plan: EncodePlan<Blob>, state: EngineState): 'native' | 'wasm' | null {
+  const a = plan.audio;
+  if (a.mode !== 'encode' || a.codec !== 'aac') return null;
+  return aacNeedsWasm(state.aac, a.bitrate ?? 0, a.channels ?? 2, a.sampleRate ?? 48000) ? 'wasm' : 'native';
 }
 
 export function createWebEngine(opts: WebEngineOptions = {}): WebEngine {
   // mediabunny prints discarded-track and fallback notices; the engine reports those itself.
   if (Logging.level > LogLevel.Errors) Logging.level = LogLevel.Errors;
 
-  const state = { latency: 'quality' as LatencyMode, aacPolyfilled: false };
+  const state: EngineState = { latency: 'quality', aacPolyfilled: false, aac: { native: false, wasmAvailable: false, nativeFailed: false }, lastAudioEncoder: null };
+  // WASM AAC takes exactly the configs the routing sends it; native AAC keeps the allowlist.
+  setAacRoute((cfg) => aacNeedsWasm(state.aac, cfg.bitrate ?? 0, cfg.numberOfChannels, cfg.sampleRate));
   let capsPromise: Promise<EngineCapabilities> | null = null;
   const opfsOutputs = new WeakMap<Blob, OpfsSink>();
 
@@ -121,17 +148,35 @@ export function createWebEngine(opts: WebEngineOptions = {}): WebEngine {
     get aacPolyfilled() {
       return state.aacPolyfilled;
     },
+    get lastAudioEncoder() {
+      return state.lastAudioEncoder;
+    },
     capabilities,
     probe(input: Blob): Promise<Probe> {
       return probeBlob(input);
     },
     async encode(plan: EncodePlan<Blob>, o: { signal: AbortSignalLike; onProgress?: (p: EncodeProgress) => void }): Promise<EncodeResult<Blob>> {
-      await capabilities(); // AAC encoder registration and the latency probe happen there
-      return encodeBlob(plan, o, {
-        probedLatency: state.latency,
-        ...(opts.pause ? { pause: opts.pause } : {}),
-        onOpfsOutput: (blob, sink) => opfsOutputs.set(blob, sink),
-      });
+      await capabilities(); // the latency probe and native-AAC check happen there
+      const run = async () => {
+        const path = aacPathFor(plan, state);
+        if (path === 'wasm') await ensureWasmAac(opts, state);
+        state.lastAudioEncoder = path;
+        const r = await encodeBlob(plan, o, {
+          probedLatency: state.latency,
+          ...(opts.pause ? { pause: opts.pause } : {}),
+          onOpfsOutput: (blob, sink) => opfsOutputs.set(blob, sink),
+        });
+        return path === 'wasm' ? { ...r, encoder: `${r.encoder}+aac-wasm` } : r;
+      };
+      try {
+        return await run();
+      } catch (e) {
+        // A native AAC encode failed: never retry native; redo this job with WASM AAC if we can.
+        if (state.lastAudioEncoder !== 'native' || isAbortError(e) || o.signal.aborted || !state.aac.wasmAvailable) throw e;
+        state.aac.nativeFailed = true;
+        opts.onWarning?.({ code: 'aac-native-failed', message: 'The browser\'s AAC encoder failed; switching to the built-in WASM AAC encoder.' });
+        return await run();
+      }
     },
     async frames(src: Blob, timesSec: number[], evalShortSide: number, signal: AbortSignalLike): Promise<LumaFrame[]> {
       try {

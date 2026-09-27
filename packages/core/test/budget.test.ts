@@ -1,6 +1,6 @@
 // A3: budget and audio maths; A4: impossible targets.
 import { describe, expect, it } from 'vitest';
-import { MB, TUNING, bppThresholds, chooseAudio, emailRawMax, minimumBytes, normalizeOptions, overheadBytes, plan, type Probe } from '../src/index.js';
+import { MB, TUNING, bppThresholds, chooseAudio, emailRawMax, isNativeAacSafe, minimumBytes, normalizeOptions, overheadBytes, plan, type Probe } from '../src/index.js';
 import { makeProbe, testCaps, webCaps } from './fake-engine.js';
 
 const caps = testCaps();
@@ -124,17 +124,30 @@ describe('impossible targets (A4)', () => {
 });
 
 describe('engine audio constraints (canEncodeAudio)', () => {
-  // Chrome on macOS: AAC needs ≥ 48 kbps mono / ≥ 96 kbps stereo.
-  const mac = testCaps({ canEncodeAudio: (c, b, ch) => c !== 'aac' || b >= (ch === 1 ? 48_000 : 96_000) });
+  // A browser with native AAC only: the TUNING.nativeAacSafe allowlist (≥ 96 kbps).
+  const nativeOnly = testCaps({ canEncodeAudio: (c, b, ch, sr) => c !== 'aac' || isNativeAacSafe(b, ch, sr) });
   const probe = makeProbe({ durationSec: 60, audio: { codec: 'aac', channels: 2, sampleRate: 48000, bitrate: 320_000, decodable: true } });
-  it('steps a rejected stereo rung to mono, and a rejected mono rung up the ladder', () => {
-    expect(chooseAudio(probe, normalizeOptions({}), 'aac', 60, 600, mac, undefined)).toMatchObject({ bitrate: 64_000, channels: 1 });
-    expect(chooseAudio(probe, normalizeOptions({}), 'aac', 60, 100, mac, undefined)).toMatchObject({ bitrate: 48_000, channels: 1 });
-    expect(chooseAudio(probe, normalizeOptions({}), 'aac', 60, 2000, mac, undefined)).toMatchObject({ bitrate: 128_000, channels: 2 });
+  it('allowlist: ≥ 96 kbps at 44.1/48 kHz, mono or stereo', () => {
+    expect(isNativeAacSafe(96_000, 2, 44100)).toBe(true);
+    expect(isNativeAacSafe(128_000, 1, 48000)).toBe(true);
+    expect(isNativeAacSafe(64_000, 2, 44100)).toBe(false);
+    expect(isNativeAacSafe(48_000, 1, 48000)).toBe(false);
+    expect(isNativeAacSafe(128_000, 2, 32000)).toBe(false);
   });
-  it('the minimum size uses the smallest audio config that encodes', () => {
-    expect(minimumBytes(probe, {}, mac)).toBeGreaterThan(minimumBytes(probe, {}, caps));
-    const p = plan(probe, { bytes: 1 * MB, label: 'x' }, {}, mac);
-    if (p.feasible) expect(p.audio.bitrate).toBeGreaterThanOrEqual(48_000);
+  it('never plans a native AAC config below the allowlist; steps up the ladder instead', () => {
+    for (const btot of [50, 100, 300, 600, 1000, 2000]) {
+      const a = chooseAudio(probe, normalizeOptions({}), 'aac', 60, btot, nativeOnly, undefined);
+      expect(isNativeAacSafe(a.bitrate!, a.channels!, a.sampleRate!), `btot ${btot}`).toBe(true);
+    }
+    expect(chooseAudio(probe, normalizeOptions({}), 'aac', 60, 100, nativeOnly, undefined)).toMatchObject({ bitrate: 96_000, channels: 1 });
+    expect(chooseAudio(probe, normalizeOptions({}), 'aac', 60, 2000, nativeOnly, undefined)).toMatchObject({ bitrate: 128_000, channels: 2 });
+  });
+  it('the minimum size accounts for the 96 kbps floor; plans at the minimum stay feasible and safe', () => {
+    const min = minimumBytes(probe, {}, nativeOnly);
+    expect(min).toBeGreaterThan(minimumBytes(probe, {}, caps));
+    const p = plan(probe, { bytes: min, label: 'x' }, {}, nativeOnly);
+    expect(p.feasible).toBe(true);
+    expect(isNativeAacSafe(p.audio.bitrate!, p.audio.channels!, p.audio.sampleRate!)).toBe(true);
+    expect(plan(probe, { bytes: min - 1, label: 'x' }, {}, nativeOnly).feasible).toBe(false);
   });
 });

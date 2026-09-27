@@ -68,6 +68,12 @@ export function normalizeOptions(o: Partial<Options> = {}): Options {
   return out;
 }
 
+/** Whether a native (WebCodecs) AAC config is on the known-safe allowlist (TUNING.nativeAacSafe). */
+export function isNativeAacSafe(bitrate: number, channels: number, sampleRate: number): boolean {
+  const a = TUNING.nativeAacSafe;
+  return bitrate >= a.minBitrate && a.channels.includes(channels) && a.sampleRates.includes(sampleRate);
+}
+
 export function marginFor(caps: EngineCapabilities, codec: VideoCodecId): number {
   return caps.marginByCodec?.[codec] ?? caps.initialMargin;
 }

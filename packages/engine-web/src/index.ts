@@ -12,4 +12,4 @@ export { probeBlob } from './probe.js';
 export { decodeFrames, evalDims } from './frames.js';
 export { loadAacEncoder, rewriteBareMediabunnyImport } from './aac-loader.js';
 export { mapEngineError } from './errors-map.js';
-export { probeAudioConfigs, makeCanEncodeAudio, audioConfigKey } from './audio-probe.js';
+export { aacNeedsWasm, makeCanEncodeAudio, type AacRouting } from './aac-routing.js';
