@@ -77,7 +77,7 @@ const errors = [];
         await shot('home-options', false);
       }
       if (only.includes('pages')) {
-        for (const p of ['compress-video-for-discord', 'compress-video-to-10mb', 'support', 'about']) {
+        for (const p of opt('pages', 'compress-video-for-discord,compress-video-to-10mb,support,about')) {
           await page.goto(`${base}/${p}/`, { waitUntil: 'load' });
           await shot(p, true);
         }

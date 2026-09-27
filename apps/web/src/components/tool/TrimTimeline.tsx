@@ -85,7 +85,17 @@ export function TrimTimeline({ it }: { it: Item }) {
   }
 
   return (
-    <div className="trim" role="group" aria-label={t.trimmer.region(it.name)}>
+    <div
+      className="trim"
+      role="group"
+      aria-label={t.trimmer.region(it.name)}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') {
+          e.stopPropagation();
+          tool.openTrim(null);
+        }
+      }}
+    >
       <div className="trim-hint">
         <MiniGlass target={tool.state.target.bytes} bytes={pv?.feasible ? pv.projectedBytes : 0} state={pv && !pv.feasible ? 'warn' : 'done'} />
         {hint}
