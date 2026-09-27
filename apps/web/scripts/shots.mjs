@@ -17,15 +17,27 @@ const FIX = resolve(new URL('../../../fixtures/generated', import.meta.url).path
 const VP = { desktop: { width: 1440, height: 900 }, phone: { width: 390, height: 844 } };
 mkdirSync(out, { recursive: true });
 
-const browser = await chromium.launch({ channel: 'chrome', headless: true });
 const errors = [];
-try {
+{
   for (const theme of themes) {
     for (const vp of vps) {
+      const browser = await chromium.launch({ channel: 'chrome', headless: true });
       const ctx = await browser.newContext({ viewport: VP[vp], colorScheme: theme, deviceScaleFactor: vp === 'phone' ? 2 : 1, isMobile: vp === 'phone', hasTouch: vp === 'phone' });
       const page = await ctx.newPage();
       page.on('pageerror', (e) => errors.push(`${theme}/${vp}: ${e.message}`));
       page.on('console', (m) => m.type() === 'error' && errors.push(`${theme}/${vp} console: ${m.text()}`));
+      const ready = async () => {
+        for (let i = 0; i < 3; i++) {
+          try {
+            await page.waitForSelector('[data-support="ok"]', { timeout: 20000 });
+            return;
+          } catch {
+            errors.push(`${theme}/${vp}: tool not ready (${await page.getAttribute('#tool', 'data-support').catch(() => '?')}), reloading`);
+            await page.reload({ waitUntil: 'load' });
+          }
+        }
+        throw new Error('tool never became ready');
+      };
       const shot = async (name, full = true) => {
         await page.waitForTimeout(400);
         await page.screenshot({ path: `${out}/${name}-${vp}-${theme}.png`, fullPage: full });
@@ -35,8 +47,8 @@ try {
         await shot('home-empty', false);
       }
       if (only.includes('queue')) {
-        await page.goto(base + '/?size=2MB', { waitUntil: 'load' });
-        await page.waitForSelector('[data-support="ok"]', { timeout: 30000 });
+        await page.goto(base + '/?size=2MB&mute=1', { waitUntil: 'load' });
+        await ready();
         await page.setInputFiles('[data-testid="file-input"]', [
           `${FIX}/f01-testsrc2-1080p30-10s.mp4`,
           `${FIX}/f03-screen-1080p30-30s.mp4`,
@@ -59,7 +71,7 @@ try {
       }
       if (only.includes('options')) {
         await page.goto(base + '/', { waitUntil: 'load' });
-        await page.waitForSelector('[data-support="ok"]', { timeout: 30000 });
+        await ready();
         await page.getByRole('button', { name: 'Options' }).first().click();
         await page.getByRole('radio', { name: /Smaller/ }).click();
         await shot('home-options', false);
@@ -71,10 +83,9 @@ try {
         }
       }
       await ctx.close();
+      await browser.close();
     }
   }
-} finally {
-  await browser.close();
 }
 console.log(`shots → ${out}`);
 if (errors.length) console.log('ERRORS:\n' + [...new Set(errors)].join('\n'));
