@@ -39,7 +39,7 @@ describe('TargetBar', () => {
     expect(group).toBeTruthy();
     const discord = screen.getByRole('radio', { name: /Discord Free, 20 MB/ });
     expect(discord.getAttribute('aria-checked')).toBe('true');
-    expect(screen.getByTestId('must-fit').textContent).toBe('Must fit under 20 MB');
+    expect(screen.getByTestId('must-fit').textContent).toBe('Fits under 20 MB');
   });
   it('roving tabindex: one tab stop, arrows move focus', () => {
     setup();
@@ -54,7 +54,7 @@ describe('TargetBar', () => {
     act(() => {
       fireEvent.click(screen.getByRole('radio', { name: /^8 MB/ }));
     });
-    expect(screen.getByTestId('must-fit').textContent).toBe('Must fit under 8 MB');
+    expect(screen.getByTestId('must-fit').textContent).toBe('Fits under 8 MB');
   });
   it('custom size validates 1–4096 MB', () => {
     setup();
@@ -68,7 +68,7 @@ describe('TargetBar', () => {
     act(() => {
       fireEvent.click(screen.getByRole('button', { name: 'Set' }));
     });
-    expect(screen.getByTestId('must-fit').textContent).toBe('Must fit under 12.5 MB');
+    expect(screen.getByTestId('must-fit').textContent).toBe('Fits under 12.5 MB');
   });
 });
 

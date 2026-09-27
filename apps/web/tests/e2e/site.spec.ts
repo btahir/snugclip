@@ -60,7 +60,7 @@ test('keyword pages are static, unique and preselect their preset', async ({ pag
   }
   await page.goto('/compress-video-for-whatsapp/');
   await expect(page.getByRole('radio', { name: /^WhatsApp/ })).toHaveAttribute('aria-checked', 'true');
-  await expect(page.getByTestId('must-fit')).toHaveText('Must fit under 64 MB');
+  await expect(page.getByTestId('must-fit')).toHaveText('Fits under 64 MB');
 });
 
 test('sitemap, robots, llms.txt and the job schema exist', async ({ request }) => {

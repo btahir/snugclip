@@ -3,7 +3,8 @@ import { formatDuration, formatSize } from '@snugclip/core';
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
 import { t } from '@/i18n/en';
 import { clockTenths } from '@/lib/format';
-import { coreOptions, previewPlan, type Item } from '@/lib/tool-model';
+import { coreOptions, maxFittingDuration, previewPlan, type Item } from '@/lib/tool-model';
+import { limitText } from '@/lib/format';
 import { MiniGlass } from './FitGlass';
 import { useTool } from './ToolProvider';
 
@@ -77,11 +78,24 @@ export function TrimTimeline({ it }: { it: Item }) {
   };
 
   const refused = it.status === 'impossible';
+  // Longest range that fits, from the full-length minimum (the minimum grows about linearly with length).
+  const fullPv = useMemo(() => {
+    if (!it.probe || !tool.caps) return null;
+    return previewPlan(it.probe, tool.state.target, coreOptions(tool.state.options, undefined, it.overrides), tool.caps);
+  }, [it.probe, it.overrides, tool.caps, tool.state.target, tool.state.options]);
+  const fitLen = fullPv && !fullPv.feasible ? maxFittingDuration(D, fullPv.minimumBytes, tool.state.target.bytes) : null;
+  const fitAt = fitLen != null ? Math.min(D, a + fitLen) : null;
+  const limitLabel = limitText(tool.state.target.bytes);
   let hint: React.ReactNode = null;
   if (pv) {
-    if (!pv.feasible) hint = <span className="fit warn">{t.trimmer.stillTooBig(formatSize(pv.minimumBytes, { round: 'ceil' }))}</span>;
-    else if (refused) hint = <span className="fit ok">{t.trimmer.nowFits}</span>;
-    else hint = <span className={`fit${refused ? ' ok' : ''}`}>{t.trimmer.fitsAt(pv.height && pv.width ? `${Math.min(pv.width, pv.height)}p` : '—', formatSize(pv.projectedBytes, { round: 'nearest' }))}</span>;
+    if (!pv.feasible)
+      hint = (
+        <span className="fit warn">
+          {fitLen != null ? t.trimmer.tooLong(formatDuration(Math.max(0, b - a - fitLen)), formatDuration(fitLen), limitLabel) : t.trimmer.stillTooBig(formatSize(pv.minimumBytes, { round: 'ceil' }))}
+        </span>
+      );
+    else if (refused) hint = <span className="fit ok">{t.trimmer.nowFits(formatSize(pv.projectedBytes, { round: 'nearest' }))}</span>;
+    else hint = <span className="fit">{t.trimmer.fitsAt(pv.height && pv.width ? `${Math.min(pv.width, pv.height)}p` : '—', formatSize(pv.projectedBytes, { round: 'nearest' }))}</span>;
   }
 
   return (
@@ -97,7 +111,7 @@ export function TrimTimeline({ it }: { it: Item }) {
       }}
     >
       <div className="trim-hint">
-        <MiniGlass target={tool.state.target.bytes} bytes={pv?.feasible ? pv.projectedBytes : 0} state={pv && !pv.feasible ? 'warn' : 'done'} />
+        <MiniGlass target={tool.state.target.bytes} bytes={pv?.feasible ? pv.projectedBytes : 0} state={pv && !pv.feasible ? 'warn' : 'done'} settle={!!pv?.feasible && refused} />
         {hint}
         <span className="times">{t.trimmer.range(clockTenths(a), clockTenths(b), formatDuration(b - a))}</span>
       </div>
@@ -108,6 +122,14 @@ export function TrimTimeline({ it }: { it: Item }) {
         <div className="dim" style={{ left: 0, width: `${pct(a)}%` }} />
         <div className="dim" style={{ left: `${pct(b)}%`, right: 0 }} />
         <div className="sel" style={{ left: `${pct(a)}%`, width: `${pct(b) - pct(a)}%` }} />
+        {fitAt != null && fitAt < b && (
+          <>
+            <div className="over" style={{ left: `${pct(fitAt)}%`, width: `${pct(b) - pct(fitAt)}%` }} aria-hidden="true" />
+            <div className="fitmark" style={{ left: `${pct(fitAt)}%` }} aria-hidden="true">
+              <span>{t.trimmer.fitsFlag}</span>
+            </div>
+          </>
+        )}
         <div
           ref={startRef}
           className="handle"

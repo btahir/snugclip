@@ -57,7 +57,7 @@ export default function SupportPage() {
                 <Icon name="heart" size={18} /> Give once
               </PayLink>
               <a className="btn lg" href={GITHUB_URL} target="_blank" rel="noreferrer">
-                <Icon name="github" size={18} /> Star the repo
+                <Icon name="star" size={18} /> Star the repo
               </a>
             </div>
             <p style={{ fontSize: 13, marginTop: 10, color: 'var(--sn-ink-3)' }}>Choose your own amount. Whatever feels right for a file that finally fit.</p>
@@ -84,7 +84,7 @@ export default function SupportPage() {
             </p>
           </div>
           <div className="illo">
-            <HeroGlass label="Thank you" />
+            <HeroGlass label="Free, always" />
           </div>
         </section>
       </main>

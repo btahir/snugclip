@@ -79,7 +79,7 @@ test('unsupported inputs get a friendly message', async ({ page }) => {
   await ready(page);
   await drop(page, [fx('f17-not-video.mp4'), fx('f16-audio-only.m4a')]);
   await expect(page.getByTestId('error')).toHaveCount(2, { timeout: 20_000 });
-  await expect(page.getByTestId('error').first()).toContainText('Snugclip handles MP4, MOV, M4V, WebM and MKV');
+  await expect(page.getByTestId('error').first()).toContainText('Snugclip works with MP4, MOV, M4V, WebM and MKV');
 });
 
 test('cancel mid-encode leaves nothing and the queue moves on', async ({ page }) => {
@@ -107,12 +107,13 @@ test('setup export and import round-trip', async ({ page }) => {
   await ready(page);
   await page.getByRole('button', { name: 'Options' }).first().click();
   const dl = page.waitForEvent('download');
-  await page.getByRole('button', { name: /Export setup/ }).click();
+  await page.getByText('Share or reuse these settings').click();
+  await page.getByRole('button', { name: 'Save settings file' }).click();
   const path = await (await dl).path();
   await page.goto('/');
   await ready(page);
   await page.setInputFiles('[data-testid="file-input"]', { name: 'setup.snugclip.json', mimeType: 'application/json', buffer: readFileSync(path) });
-  await expect(page.getByTestId('must-fit')).toHaveText('Must fit under 12 MB');
+  await expect(page.getByTestId('must-fit')).toHaveText('Fits under 12 MB');
   await expect(page.getByText('muted · up to 480p').first()).toBeVisible();
 });
 

@@ -6,6 +6,19 @@ export function limitText(bytes: number): string {
   return bytes >= 1_000_000_000 ? formatSize(bytes, { round: 'nearest' }) : targetLabel(bytes);
 }
 
+/**
+ * A result size as SPEC 2 shows it: two decimals under 10 MB ("1.90 MB"), one under 100 MB,
+ * always floored by core's formatSize (never rounded up across the limit).
+ */
+export function resultSize(bytes: number): string {
+  const s = formatSize(bytes);
+  const m = /^(\d+)(?:\.(\d+))? (MB|GB)$/.exec(s);
+  if (!m) return s;
+  const [, int, dec = '', unit] = m;
+  const want = Number(int) < 10 ? 2 : Number(int) < 100 ? 1 : 0;
+  return want ? `${int}.${dec.padEnd(want, '0')} ${unit}` : s;
+}
+
 /** Spare room under the limit: always floored so it never overstates the room. */
 export function spareText(bytes: number, target: number): string {
   return formatSize(Math.max(0, target - bytes));

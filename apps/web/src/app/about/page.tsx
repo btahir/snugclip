@@ -59,7 +59,7 @@ export default function AboutPage() {
 
         <section id="how" className="section" aria-labelledby="how-h">
           <h2 id="how-h">How it works</h2>
-          <ol className="steps">
+          <ol className="steps flat">
             <li>
               <span className="n" aria-hidden="true">
                 1

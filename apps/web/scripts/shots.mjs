@@ -39,7 +39,7 @@ const errors = [];
         throw new Error('tool never became ready');
       };
       const shot = async (name, full = true) => {
-        await page.waitForTimeout(400);
+        await page.waitForTimeout(1200);
         await page.screenshot({ path: `${out}/${name}-${vp}-${theme}.png`, fullPage: full });
       };
       if (only.includes('empty')) {

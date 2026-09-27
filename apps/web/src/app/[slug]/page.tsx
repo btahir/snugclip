@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Icon } from '@/components/Icon';
 import { Footer } from '@/components/site/Footer';
+import { CtaBand } from '@/components/site/CtaBand';
 import { Header } from '@/components/site/Header';
 import { HeroGlass } from '@/components/site/HeroGlass';
 import { Tool } from '@/components/tool/Tool';
@@ -38,7 +39,7 @@ function PlanTable({ bytes, caption }: { bytes: number; caption: string }) {
   return (
     <div className="table-card">
       <div className="scroll">
-        <table>
+        <table className="stack">
           <caption className="sr-only">{caption}</caption>
           <thead>
             <tr>
@@ -51,16 +52,16 @@ function PlanTable({ bytes, caption }: { bytes: number; caption: string }) {
           <tbody>
             {rows.map((r) => (
               <tr key={r.durationSec}>
-                <td className="num">{formatDuration(r.durationSec)}</td>
-                <td>{r.feasible ? `${r.resolution} at ${r.fps} fps` : `Too long: needs at least ${formatSize(r.minimumBytes, { round: 'ceil' })}`}</td>
-                <td className="num">{r.feasible ? `${r.videoKbps} kbps` : '—'}</td>
-                <td className="num">{r.feasible ? (r.audioKbps ? `${r.audioKbps} kbps` : 'muted') : '—'}</td>
+                <td className="num" data-label="Clip length">{formatDuration(r.durationSec)}</td>
+                <td data-label="Snugclip picks">{r.feasible ? `${r.resolution} at ${r.fps} fps` : `Too long: needs at least ${formatSize(r.minimumBytes, { round: 'ceil' })}`}</td>
+                <td className="num" data-label="Video">{r.feasible ? `${r.videoKbps} kbps` : '—'}</td>
+                <td className="num" data-label="Sound">{r.feasible ? (r.audioKbps ? `${r.audioKbps} kbps` : 'muted') : '—'}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-      <p className="foot">{caption} Worked out by the same planner the tool uses, for a {targetLabel(bytes)} target.</p>
+      <p className="foot">{/[.!?]$/.test(caption.trim()) ? caption : `${caption.trim()}.`} Worked out by the same planner the tool uses, for {targetLabel(bytes)}.</p>
     </div>
   );
 }
@@ -95,7 +96,7 @@ export default async function KeywordLanding({ params }: { params: Promise<{ slu
   };
   return (
     <>
-      <Header />
+      <Header landing />
       <main className="wrap">
         <section className="page-hero">
           <div>
@@ -103,7 +104,7 @@ export default async function KeywordLanding({ params }: { params: Promise<{ slu
               <span className="gl">
                 <Icon name={p.eyebrow.glyph} size={16} />
               </span>
-              {p.eyebrow.label} · <span className="mono">{p.eyebrow.value}</span>
+              {p.eyebrow.label} · <span className="num">{p.eyebrow.value}</span>
             </span>
             <h1 className="h1">{p.h1}</h1>
             <p className="lede">{p.lede}</p>
@@ -113,7 +114,7 @@ export default async function KeywordLanding({ params }: { params: Promise<{ slu
           </div>
         </section>
 
-        <Tool initialTarget={target} />
+        <Tool initialTarget={target} tiers />
 
         <section className="section" aria-labelledby="limits">
           <h2 id="limits">{p.limits.heading}</h2>
@@ -122,7 +123,7 @@ export default async function KeywordLanding({ params }: { params: Promise<{ slu
           </div>
           <div className="table-card">
             <div className="scroll">
-              <table>
+              <table className="stack">
                 <thead>
                   <tr>
                     <th scope="col">Where</th>
@@ -133,9 +134,9 @@ export default async function KeywordLanding({ params }: { params: Promise<{ slu
                 <tbody>
                   {p.limits.rows.map((r) => (
                     <tr key={r.label}>
-                      <td>{r.label}</td>
+                      <td className="lab">{r.label}</td>
                       <td className="num">{r.value}</td>
-                      <td>{r.note ?? ''}</td>
+                      <td className="note">{r.note ?? ''}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -167,7 +168,7 @@ export default async function KeywordLanding({ params }: { params: Promise<{ slu
 
         <section className="section" aria-labelledby="howto">
           <h2 id="howto">How to do it</h2>
-          <ol className="steps">
+          <ol className="steps flat">
             {p.howTo.map((s, i) => (
               <li key={s.title}>
                 <span className="n" aria-hidden="true">
@@ -182,7 +183,7 @@ export default async function KeywordLanding({ params }: { params: Promise<{ slu
 
         <section className="section" aria-labelledby="why">
           <h2 id="why">Why Snugclip</h2>
-          <div className="why">
+          <div className="why flat">
             <div>
               <span className="ic">
                 <Icon name="ok" size={22} />
@@ -222,6 +223,8 @@ export default async function KeywordLanding({ params }: { params: Promise<{ slu
             ))}
           </div>
         </section>
+
+        <CtaBand title={`Ready? Fit your clip under ${p.glassLabel}.`} button="Choose a video" />
 
         <section className="section" aria-labelledby="related">
           <h2 id="related">Related</h2>

@@ -3,7 +3,7 @@ import { formatSize } from '@snugclip/core';
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent } from 'react';
 import { Icon } from '@/components/Icon';
 import { t } from '@/i18n/en';
-import { clock } from '@/lib/format';
+import { clock, resultSize } from '@/lib/format';
 import { lsGet, lsSet } from '@/lib/storage';
 import type { Item } from '@/lib/tool-model';
 
@@ -125,7 +125,7 @@ export function Compare({ it }: { it: Item }) {
     '--zy': `${zoom?.y ?? 50}%`,
   } as CSSProperties;
   const beforeSize = formatSize(it.bytes, { round: 'nearest' });
-  const afterSize = formatSize(r.output?.bytes ?? it.bytes);
+  const afterSize = resultSize(r.output?.bytes ?? it.bytes);
 
   return (
     <>

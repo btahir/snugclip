@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Icon } from '@/components/Icon';
 import { t } from '@/i18n/en';
+import { limitText } from '@/lib/format';
 import { EmptyGlass } from './FitGlass';
 import { useTool } from './ToolProvider';
 
@@ -88,27 +89,46 @@ function Picker({ inputRef }: { inputRef: React.RefObject<HTMLInputElement | nul
   );
 }
 
-export function DropCard({ over }: { over: number | null | false }) {
+export function DropCard({ over, compactIcon = false }: { over: number | null | false; compactIcon?: boolean }) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const { state } = useTool();
   const title = over === false ? t.drop.title : over ? t.drop.letGo(over) : t.drop.letGoUnknown;
+  const pick = () => inputRef.current?.click();
   return (
-    <div className={`dropcard${over !== false ? ' over' : ''}`} onClick={(e) => e.target === e.currentTarget && inputRef.current?.click()}>
-      <div onClick={() => inputRef.current?.click()}>
-        <EmptyGlass size={72} dropping={over !== false} />
-        <h2>{title}</h2>
-        <p>
-          {t.drop.or}{' '}
+    // The whole card is a click target for mouse users; keyboard users get the real button inside.
+    <div className={`dropcard${over !== false ? ' over' : ''}${compactIcon ? ' compact-icon' : ''}`} onClick={pick}>
+      <div>
+        <EmptyGlass size={compactIcon ? 44 : 64} level={over !== false ? 0.72 : 0.3} label={limitText(state.target.bytes)} />
+        <div className="fine">
+          <h2>{title}</h2>
+          <p>
+            {t.drop.or}{' '}
+            <button
+              type="button"
+              className="link"
+              onClick={(e) => {
+                e.stopPropagation();
+                pick();
+              }}
+            >
+              {t.drop.choose}
+            </button>
+          </p>
+        </div>
+        <div className="coarse">
+          <h2>{t.drop.titleTouch}</h2>
           <button
             type="button"
-            className="link"
+            className="btn primary lg choose-btn"
             onClick={(e) => {
               e.stopPropagation();
-              inputRef.current?.click();
+              pick();
             }}
           >
-            {t.drop.choose}
+            <Icon name="plus" size={20} />
+            {t.drop.chooseTouch}
           </button>
-        </p>
+        </div>
         <p className="formats">{t.drop.formats}</p>
       </div>
       <Picker inputRef={inputRef} />
@@ -167,7 +187,7 @@ export function Trust() {
         {t.trust.offline}
       </span>
       <span>
-        <Icon name="ok" size={16} />
+        <Icon name="check" size={16} />
         {t.trust.never}
       </span>
     </div>

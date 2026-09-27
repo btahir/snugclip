@@ -5,6 +5,7 @@
      Atkinson Hyperlegible Next  -> @fontsource-variable/atkinson-hyperlegible-next
      JetBrains Mono              -> @fontsource-variable/jetbrains-mono
    Contrast: every *text* token pair below is at least 4.5:1 on bg, surface, surface-2 and sunk.
+   Owned by builder B since 2026-09-27 (design critic REVIEW.md: berry errors, glass stroke, dark status tints).
    MIT, Snugclip contributors. */
 
 :root {
@@ -32,7 +33,8 @@
   --sn-liquid-top: #6ADBCB;
   --sn-liquid: #1C9F92;
   --sn-liquid-deep: #0E8C80;
-  --sn-glass: rgba(19, 39, 48, 0.16);   /* tube outline, ticks */
+  --sn-glass: rgba(19, 39, 48, 0.16);   /* ticks only */
+  --sn-glass-stroke: rgba(19, 39, 48, 0.46); /* tube outline, >= 3:1 on surface and surface-2 */
 
   /* The limit. Coral means "the line" and nothing else. */
   --sn-limit: #D2453A;       /* the line itself */
@@ -42,7 +44,7 @@
   /* Status */
   --sn-ok: #0B6E4F;   --sn-ok-soft: #DDF1E6;     /* Looks great, spare room */
   --sn-warn: #9A5B07; --sn-warn-soft: #FBEBD2;   /* Softer still clear, impossible target */
-  --sn-bad: #B4372C;  --sn-bad-soft: #FBE3DF;    /* real errors only (decode failed, crash) */
+  --sn-bad: #A3294F;  --sn-bad-soft: #F8E3EA;    /* real errors only (berry, never coral: coral is the line) */
   --sn-info: #2553B8; --sn-info-soft: #E2EAFB;
 
   --sn-focus: #1F5FD6;
@@ -103,10 +105,10 @@
     --sn-line: #203740; --sn-line-2: #2C4750; --sn-scrim: rgba(0, 0, 0, 0.6);
     --sn-ink: #E9F3F0; --sn-ink-2: #B6C8C4; --sn-ink-3: #8DA39E;
     --sn-brand: #52DCCB; --sn-brand-ink: #062320; --sn-brand-soft: #123A38;
-    --sn-liquid-top: #7EF0DF; --sn-liquid: #33C8B7; --sn-liquid-deep: #16968A; --sn-glass: rgba(233, 243, 240, 0.18);
+    --sn-liquid-top: #7EF0DF; --sn-liquid: #33C8B7; --sn-liquid-deep: #16968A; --sn-glass: rgba(233, 243, 240, 0.18); --sn-glass-stroke: rgba(233, 243, 240, 0.48);
     --sn-limit: #FF8073; --sn-limit-text: #FF8073; --sn-limit-soft: #3A1E1D;
-    --sn-ok: #6FE0AE; --sn-ok-soft: #133528; --sn-warn: #F2B866; --sn-warn-soft: #3A2A12;
-    --sn-bad: #FF8A7E; --sn-bad-soft: #3A1E1D; --sn-info: #9DB8FF; --sn-info-soft: #18264A;
+    --sn-ok: #6FE0AE; --sn-ok-soft: #133528; --sn-warn: #F2B866; --sn-warn-soft: color-mix(in oklab, #F2B866 14%, #12232A);
+    --sn-bad: #FF93B4; --sn-bad-soft: color-mix(in oklab, #FF93B4 13%, #12232A); --sn-info: #9DB8FF; --sn-info-soft: #18264A;
     --sn-focus: #8DB0FF;
     --sn-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.3);
     --sn-shadow-2: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 16px 40px -18px rgba(0, 0, 0, 0.7);
@@ -120,10 +122,10 @@
   --sn-line: #203740; --sn-line-2: #2C4750; --sn-scrim: rgba(0, 0, 0, 0.6);
   --sn-ink: #E9F3F0; --sn-ink-2: #B6C8C4; --sn-ink-3: #8DA39E;
   --sn-brand: #52DCCB; --sn-brand-ink: #062320; --sn-brand-soft: #123A38;
-  --sn-liquid-top: #7EF0DF; --sn-liquid: #33C8B7; --sn-liquid-deep: #16968A; --sn-glass: rgba(233, 243, 240, 0.18);
+  --sn-liquid-top: #7EF0DF; --sn-liquid: #33C8B7; --sn-liquid-deep: #16968A; --sn-glass: rgba(233, 243, 240, 0.18); --sn-glass-stroke: rgba(233, 243, 240, 0.48);
   --sn-limit: #FF8073; --sn-limit-text: #FF8073; --sn-limit-soft: #3A1E1D;
-  --sn-ok: #6FE0AE; --sn-ok-soft: #133528; --sn-warn: #F2B866; --sn-warn-soft: #3A2A12;
-  --sn-bad: #FF8A7E; --sn-bad-soft: #3A1E1D; --sn-info: #9DB8FF; --sn-info-soft: #18264A;
+  --sn-ok: #6FE0AE; --sn-ok-soft: #133528; --sn-warn: #F2B866; --sn-warn-soft: color-mix(in oklab, #F2B866 14%, #12232A);
+  --sn-bad: #FF93B4; --sn-bad-soft: color-mix(in oklab, #FF93B4 13%, #12232A); --sn-info: #9DB8FF; --sn-info-soft: #18264A;
   --sn-focus: #8DB0FF;
   --sn-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.3);
   --sn-shadow-2: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 16px 40px -18px rgba(0, 0, 0, 0.7);

@@ -6,12 +6,11 @@ import { QueueItem } from './QueueItem';
 import { useTool } from './ToolProvider';
 
 export function Queue() {
-  const { state, downloadAll, exportReport } = useTool();
+  const { state, downloadAll } = useTool();
   const s = summarize(state.items);
   if (!s.total) return null;
   const parts = [s.ready && t.queue.ready(s.ready), s.running && t.queue.compressing(s.running), s.waiting && t.queue.waiting(s.waiting), s.attention && t.queue.needsAttention(s.attention)].filter(Boolean) as string[];
   const firstQueued = state.items.find((i) => i.status === 'queued')?.id;
-  const hasReports = state.items.some((i) => i.report);
   return (
     <section aria-labelledby="queue-title">
       <div className="qbar">
@@ -21,16 +20,12 @@ export function Queue() {
         </div>
         <span className="sp" />
         <div className="acts">
-          {hasReports && (
-            <button type="button" className="btn quiet desk" onClick={exportReport}>
-              <Icon name="doc" size={18} />
-              {t.queue.exportReport}
+          {s.total >= 2 && (
+            <button type="button" className="btn" disabled={s.ready < 2} onClick={() => void downloadAll()} data-testid="download-all">
+              <Icon name="down" size={18} />
+              {s.ready >= 2 ? t.queue.downloadAllZip : t.queue.downloadAll}
             </button>
           )}
-          <button type="button" className="btn" disabled={s.ready < 2} onClick={() => void downloadAll()} data-testid="download-all">
-            <Icon name="down" size={18} />
-            {s.ready >= 2 ? t.queue.downloadAllZip : t.queue.downloadAll}
-          </button>
         </div>
       </div>
       <ul className="queue" aria-label={t.queue.region}>

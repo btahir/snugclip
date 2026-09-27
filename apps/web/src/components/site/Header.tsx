@@ -14,7 +14,7 @@ export function Logo({ height = 34 }: { height?: number }) {
   );
 }
 
-export function Header() {
+export function Header({ landing = false }: { landing?: boolean }) {
   return (
     <header className="wrap site-header">
       <a className="skip" href="#tool">
@@ -24,9 +24,15 @@ export function Header() {
         <Logo />
       </Link>
       <nav className="site-nav" aria-label="Main">
-        <Link className="nav-link" href="/about/#how">
-          {t.nav.howItWorks}
-        </Link>
+        {landing ? (
+          <a className="nav-link" href="#related">
+            {t.nav.allTools}
+          </a>
+        ) : (
+          <Link className="nav-link" href="/about/#how">
+            {t.nav.howItWorks}
+          </Link>
+        )}
         <Link className="nav-link" href="/about/#privacy">
           {t.nav.privacy}
         </Link>

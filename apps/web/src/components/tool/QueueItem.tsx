@@ -2,7 +2,7 @@
 import { formatDuration, formatSize } from '@snugclip/core';
 import { Icon } from '@/components/Icon';
 import { t } from '@/i18n/en';
-import { etaText, limitText } from '@/lib/format';
+import { etaText, limitText, resultSize, spareText } from '@/lib/format';
 import { maxFittingDuration, type Item } from '@/lib/tool-model';
 import { MiniGlass } from './FitGlass';
 import { ReviewCard } from './ReviewCard';
@@ -24,8 +24,8 @@ function Thumb({ it, ok }: { it: Item; ok?: boolean }) {
 
 function Title({ it, next }: { it: Item; next?: boolean }) {
   return (
-    <h3 className="fname" title={it.name} id={`title-${it.id}`}>
-      {it.name}
+    <h3 className="fname-row" title={it.name} id={`title-${it.id}`}>
+      <span className="fname">{it.name}</span>
       {next && <span className="pill">{t.queue.next}</span>}
     </h3>
   );
@@ -86,6 +86,7 @@ export function QueueItem({ it, isNext }: { it: Item; isNext: boolean }) {
         <>
           <Title it={it} next={isNext} />
           <p className="sub">
+            {!isNext && <b className="waiting-word">{t.item.waiting} · </b>}
             {formatSize(it.bytes, { round: 'nearest' })} · {dur != null ? formatDuration(dur) : ''}
             {land && <span className="phone-hide"> · will land around {land}</span>}
           </p>
@@ -145,7 +146,7 @@ export function QueueItem({ it, isNext }: { it: Item; isNext: boolean }) {
             >
               <i style={analysing && !it.paused ? undefined : { transform: `scaleX(${Math.max(0.02, pct / 100)})` }} />
             </div>
-            <span className="pct mono">{pct}%</span>
+            {!(analysing && !it.paused) && <span className="pct mono">{pct}%</span>}
           </div>
           <p className="sub">{sub}</p>
         </>
@@ -191,13 +192,19 @@ export function QueueItem({ it, isNext }: { it: Item; isNext: boolean }) {
       const r = it.report!;
       const out = r.output?.bytes ?? it.bytes;
       glass = <MiniGlass target={target} bytes={out} state="done" />;
-      const quality = r.passThrough ? t.review.untouched : (r.quality?.label ?? null);
+      const quality = r.passThrough ? null : (r.quality?.label ?? null);
       const madeFor = it.runTarget && it.runTarget.bytes !== state.target.bytes;
       main = (
         <>
           <Title it={it} />
           <p className="sub">
-            {t.item.doneSub(formatSize(out), quality, it.downloaded)}
+            {r.passThrough && (
+              <>
+                {resultSize(out)} · <b className="ok-word">{t.item.alreadyFits}</b> · {t.review.spare(spareText(out, target))}
+                {it.downloaded ? ` · ${t.item.downloadedWord}` : ''}
+              </>
+            )}
+            {!r.passThrough && t.item.doneSub(resultSize(out), quality, it.downloaded)}
             {madeFor && <span> · {t.item.madeFor(limitText(it.runTarget!.bytes))}</span>}
           </p>
         </>
@@ -234,7 +241,12 @@ export function QueueItem({ it, isNext }: { it: Item; isNext: boolean }) {
       );
       actions = remove;
       const fitDur = dur && min ? maxFittingDuration(dur, min, state.target.bytes) : 0;
-      strip = (
+      strip = trimming ? (
+        <div className="notice warn strip slim" data-testid="impossible">
+          <Icon name="spill" size={20} />
+          <span>{t.impossible.slim(minText, limitText(state.target.bytes))}</span>
+        </div>
+      ) : (
         <div className="notice warn strip" data-testid="impossible">
           <Icon name="spill" size={20} />
           <div>
@@ -242,7 +254,7 @@ export function QueueItem({ it, isNext }: { it: Item; isNext: boolean }) {
               {t.impossible.body(minText, limitText(state.target.bytes))} {fitDur >= 1 ? t.impossible.trimTo(formatDuration(fitDur)) : t.impossible.pickBigger}
             </span>
             <div className="actions">
-              <button type="button" className="btn sm primary" onClick={() => tool.openTrim(it.id)} aria-expanded={trimming}>
+              <button type="button" className="btn sm primary" onClick={() => tool.openTrim(it.id)} aria-pressed={trimming}>
                 <Icon name="scissors" size={16} />
                 {t.item.trim}
               </button>
@@ -254,9 +266,9 @@ export function QueueItem({ it, isNext }: { it: Item; isNext: boolean }) {
               )}
               <button
                 type="button"
-                className="btn sm quiet"
+                className="btn sm"
                 onClick={() => {
-                  const el = document.querySelector<HTMLElement>('.chips [role="radio"][aria-checked="true"]') ?? document.querySelector<HTMLElement>('.chips [role="radio"]');
+                  const el = document.querySelector<HTMLElement>('.target [role="radio"][aria-checked="true"]') ?? document.querySelector<HTMLElement>('.target [role="radio"]');
                   el?.focus();
                   el?.scrollIntoView({ block: 'center', behavior: 'smooth' });
                 }}
@@ -295,8 +307,13 @@ export function QueueItem({ it, isNext }: { it: Item; isNext: boolean }) {
         <div className="notice bad strip" data-testid="error">
           <Icon name="info" size={18} />
           <div>
-            <span>{msg}</span>
-            <div className="actions">
+            <span>
+              {msg}{' '}
+              <a className="link-plain" href="/about/#formats">
+                {t.errors.whatWorks}
+              </a>
+            </span>
+            <div className="actions" hidden={e?.code === 'E_UNSUPPORTED' || e?.code === 'E_UNSUPPORTED_ENCODER'}>
               {e?.code !== 'E_UNSUPPORTED' && (
                 <button type="button" className="btn sm" onClick={() => tool.retry(it.id)}>
                   <Icon name="retry" size={16} />
@@ -309,9 +326,6 @@ export function QueueItem({ it, isNext }: { it: Item; isNext: boolean }) {
                   {t.item.retryMuted}
                 </button>
               )}
-              <a className="btn sm quiet" href="/about/#formats">
-                {t.errors.whatWorks}
-              </a>
             </div>
           </div>
         </div>

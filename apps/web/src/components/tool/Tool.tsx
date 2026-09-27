@@ -7,13 +7,15 @@ import { DropCard, DropStrip, Trust, useGlobalDrop } from './DropZone';
 import { OptionsDrawer } from './OptionsDrawer';
 import { Queue } from './Queue';
 import { SupportCard } from './SupportCard';
-import { TargetBar } from './TargetBar';
+import { TargetBar, TierBar } from './TargetBar';
 import { ToastAndLive } from './Toast';
 import { ToolProvider, useTool } from './ToolProvider';
 import { Unsupported } from './Unsupported';
 import { t } from '@/i18n/en';
+import { HeroGlass } from '@/components/site/HeroGlass';
+import { limitText } from '@/lib/format';
 
-function ToolInner({ hero }: { hero?: boolean }) {
+function ToolInner({ hero, tiers }: { hero?: boolean; tiers?: boolean }) {
   const { state, support } = useTool();
   const [optionsOpen, setOptionsOpen] = useState(false);
   const over = useGlobalDrop();
@@ -23,18 +25,28 @@ function ToolInner({ hero }: { hero?: boolean }) {
     <div id="tool" className="tool" data-support={support}>
       {hero && (
         <div className={state.items.length ? 'sr-only' : 'home-hero'}>
-          <h1>
-            {t.home.h1a} <em>{t.home.h1b}</em>
-          </h1>
-          <p>{t.home.lede}</p>
+          <div>
+            <h1>
+              {t.home.h1a} <em>{t.home.h1b}</em>
+            </h1>
+            <p>{t.home.lede}</p>
+          </div>
+          {!state.items.length && (
+            <div className="hero-glass" aria-hidden="true">
+              <HeroGlass key={state.target.bytes} label={limitText(state.target.bytes)} small />
+            </div>
+          )}
         </div>
       )}
-      <TargetBar optionsOpen={optionsOpen} onToggleOptions={() => setOptionsOpen((o) => !o)} />
+      <div aria-disabled={support === 'unsupported' || undefined} inert={support === 'unsupported' || undefined}>
+        <TargetBar optionsOpen={optionsOpen} onToggleOptions={() => setOptionsOpen((o) => !o)} />
+      </div>
+      {tiers && <TierBar />}
       {optionsOpen && <OptionsDrawer onClose={close} returnFocusTo={optsBtn} />}
       {support === 'unsupported' ? (
         <Unsupported />
       ) : state.items.length === 0 ? (
-        <DropCard over={over} />
+        <DropCard over={over} compactIcon={!!hero || !!tiers} />
       ) : (
         <>
           <Queue />
@@ -49,10 +61,10 @@ function ToolInner({ hero }: { hero?: boolean }) {
   );
 }
 
-export function Tool({ initialTarget, hero }: { initialTarget?: Target; hero?: boolean }) {
+export function Tool({ initialTarget, hero, tiers }: { initialTarget?: Target; hero?: boolean; tiers?: boolean }) {
   return (
     <ToolProvider {...(initialTarget ? { initialTarget } : {})}>
-      <ToolInner {...(hero ? { hero } : {})} />
+      <ToolInner {...(hero ? { hero } : {})} {...(tiers ? { tiers } : {})} />
     </ToolProvider>
   );
 }

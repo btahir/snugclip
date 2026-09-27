@@ -38,6 +38,12 @@ export function MiniGlass({ bytes = 0, target, projected, state = 'idle', settle
   return (
     <div className={cls} style={{ '--level': level } as CSSProperties} aria-hidden="true">
       {state !== 'warn' && state !== 'bad' && <div className="liq" />}
+      {state === 'warn' && <div className="spill" />}
+      {state === 'bad' && (
+        <svg className="mini-x" viewBox="0 0 10 10" width="10" height="10">
+          <path d="m2 2 6 6M8 2 2 8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+        </svg>
+      )}
       {state === 'encoding' && level > 0.02 && <div className="wave" />}
       {projected !== undefined && state === 'encoding' && (
         <div className="ghost" style={{ top: pctTop(fillLevel(projected, target) * LIMIT_LINE) }} />
@@ -47,19 +53,36 @@ export function MiniGlass({ bytes = 0, target, projected, state = 'idle', settle
   );
 }
 
-/** Empty glass illustration (drop card, unsupported state). A clip hovers over the rim and drops in on drag-over. */
-export function EmptyGlass({ question = false, size = 64, dropping = false }: { question?: boolean; size?: number; dropping?: boolean }) {
+/**
+ * The brand tumbler as an illustration: liquid with the play cut-out, the coral limit line, and
+ * an optional label beside the line. `level` 0..1 is the share of the height up to the line.
+ */
+export function EmptyGlass({ question = false, size = 64, level = 0.3, label }: { question?: boolean; size?: number; level?: number; label?: string }) {
+  // Tumbler inner spans y 8 → 41.8; the line sits at y 15.5.
+  const top = 41.8 - (41.8 - 15.5) * Math.max(0, Math.min(1, level));
+  const w = label ? size * 1.9 : size;
   return (
-    <svg className={`empty-glass${dropping ? ' dropping' : ''}`} width={size} height={size * 1.25} viewBox="0 -12 48 60" aria-hidden="true">
-      {!question && (
-        <g className="clip-card">
-          <rect x="15" y="-9" width="18" height="13" rx="3.5" fill="var(--sn-surface)" stroke="var(--sn-ink-2)" strokeWidth="1.8" />
-          <path d="M22.2 -5.3v5.6l4.6-2.8z" fill="var(--sn-liquid)" />
-        </g>
-      )}
-      <path d="M9.5 8 11.9 35.4A7 7 0 0 0 18.9 41.8H29.1A7 7 0 0 0 36.1 35.4L38.5 8" fill="color-mix(in oklab, var(--sn-surface) 70%, transparent)" stroke="var(--sn-ink)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+    <svg className="empty-glass" width={w} height={size} viewBox={`0 0 ${label ? 91 : 48} 48`} aria-hidden="true">
+      <defs>
+        <clipPath id="eg-in">
+          <path d="M9.5 8H38.5L36.1 35.4A7 7 0 0 1 29.1 41.8H18.9A7 7 0 0 1 11.9 35.4Z" />
+        </clipPath>
+        <mask id="eg-cut" maskUnits="userSpaceOnUse" x="0" y="0" width="48" height="48">
+          <rect width="48" height="48" fill="#fff" />
+          {!question && <path d="M21.2 28.4v8.2c0 .8.9 1.3 1.6.9l6.6-4.1c.6-.4.6-1.3 0-1.7l-6.6-4.1c-.7-.4-1.6.1-1.6.8Z" fill="#000" />}
+        </mask>
+      </defs>
+      <path d="M9.5 8H38.5L36.1 35.4A7 7 0 0 1 29.1 41.8H18.9A7 7 0 0 1 11.9 35.4Z" fill="color-mix(in oklab, var(--sn-surface) 70%, transparent)" />
+      <g clipPath="url(#eg-in)">
+        <path className="eg-liq" style={{ transform: `translateY(${top}px)` }} d="M0 1.2C4 -.6 8 -.6 12 1.2S20 3 24 1.2 32 -.6 36 1.2 44 3 48 1.2V48H0Z" fill="var(--sn-liquid)" mask="url(#eg-cut)" />
+      </g>
+      <path d="M9.5 8 11.9 35.4A7 7 0 0 0 18.9 41.8H29.1A7 7 0 0 0 36.1 35.4L38.5 8" fill="none" stroke="var(--sn-ink)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
       <path d="M5 15.5H43" stroke="var(--sn-limit)" strokeWidth="3" strokeLinecap="round" />
-      <path d="M13.1 37.2c3.4 1.4 7 1.8 10.9 1.8s7.5-.4 10.9-1.8" fill="none" stroke="var(--sn-liquid)" strokeWidth="2.6" strokeLinecap="round" opacity=".6" />
+      {label && (
+        <text x="47" y="19.6" fontFamily="var(--sn-font-display)" fontWeight="600" fontSize="11" fill="var(--sn-limit-text)">
+          {label}
+        </text>
+      )}
       {question && (
         <text x="24" y="33" textAnchor="middle" fontFamily="var(--sn-font-display)" fontWeight="700" fontSize="14" fill="var(--sn-ink-2)">
           ?

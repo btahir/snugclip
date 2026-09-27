@@ -29,6 +29,7 @@ export const DESTINATIONS: DestinationDef[] = [
     kind: 'platform',
     tiers: [
       { ids: ['discord', 'discord-free'], label: 'Free' },
+      { ids: ['size-10', '10mb', '10'], label: 'Older free' },
       { ids: ['discord-nitro-basic', 'nitro-basic'], label: 'Nitro Basic' },
       { ids: ['discord-nitro', 'nitro'], label: 'Nitro' },
     ],
@@ -116,8 +117,12 @@ export function targetFromPreset(p: Preset): Target {
 }
 
 /** Which destination chip (key) represents a target, or 'custom'. */
-export function destinationForTarget(target: Target, dests: ResolvedDestination[]): string {
+export function destinationForTarget(target: Target, dests: ResolvedDestination[], prefer?: string | null): string {
   if (target.presetId) {
+    const p = prefer ? dests.find((d) => d.key === prefer) : undefined;
+    if (p && p.tiers.some((t) => t.preset.id === target.presetId)) return p.key;
+    // Plain size presets belong to their size chip even when a platform lists them as a tier.
+    for (const d of dests) if (d.kind === 'size' && d.tiers[0]!.preset.id === target.presetId) return d.key;
     for (const d of dests) if (d.tiers.some((t) => t.preset.id === target.presetId)) return d.key;
   }
   for (const d of dests) if (d.kind === 'size' && d.tiers[0]!.preset.bytes === target.bytes) return d.key;

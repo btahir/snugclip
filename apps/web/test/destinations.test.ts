@@ -11,7 +11,7 @@ describe('destinations', () => {
   });
   it('limits come from core presets (PLAN §2)', () => {
     const byKey = Object.fromEntries(dests.map((d) => [d.key, d.tiers.map((t) => t.preset.bytes)]));
-    expect(byKey.discord).toEqual([20_000_000, 50_000_000, 500_000_000]);
+    expect(byKey.discord).toEqual([20_000_000, 10_000_000, 50_000_000, 500_000_000]);
     expect(byKey.whatsapp![0]).toBe(64_000_000);
     expect(byKey.email).toEqual([14_500_000, 18_000_000, 14_500_000]);
   });
@@ -20,6 +20,9 @@ describe('destinations', () => {
     expect(destinationForTarget({ bytes: 25_000_000, label: '25 MB' }, dests)).toBe('size-25');
     expect(destinationForTarget({ bytes: 7_300_000, label: '7.3 MB' }, dests)).toBe('custom');
     expect(defaultTarget(dests).presetId).toBe('discord');
+    // A plain size preset belongs to its size chip unless the person picked it from a platform's tiers.
+    expect(destinationForTarget(targetFromPreset(getPreset('size-10')!), dests)).toBe('size-10');
+    expect(destinationForTarget(targetFromPreset(getPreset('size-10')!), dests, 'discord')).toBe('discord');
   });
   it('custom range is 1 MB to 4096 MB', () => {
     expect(isValidCustomBytes(999_999)).toBe(false);

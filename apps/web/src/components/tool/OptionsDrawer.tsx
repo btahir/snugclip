@@ -29,7 +29,6 @@ export function OptionsDrawer({ onClose, returnFocusTo }: { onClose: () => void;
   const fileRef = useRef<HTMLInputElement>(null);
   const smaller = o.codec === 'smaller' || o.codec === 'av1' || o.codec === 'hevc';
   const canSmaller = !caps || caps.videoCodecs.includes('av1') || caps.videoCodecs.includes('hevc');
-  const container = o.codec === 'vp9' || (caps && !caps.videoCodecs.includes('h264') && caps.videoCodecs.includes('vp9')) ? 'WebM' : 'MP4';
 
   useEffect(() => {
     ref.current?.querySelector<HTMLElement>('button, select, input')?.focus();
@@ -54,6 +53,7 @@ export function OptionsDrawer({ onClose, returnFocusTo }: { onClose: () => void;
           </button>
         </div>
         <div className="opt-grid">
+          <div className="opt-col">
           <div className="opt" role="group" aria-labelledby="opt-codec">
             <span className="opt-label" id="opt-codec">
               {t.options.codecGroup}
@@ -68,17 +68,13 @@ export function OptionsDrawer({ onClose, returnFocusTo }: { onClose: () => void;
                 <small>{t.options.smallerSub}</small>
               </button>
             </div>
+            <p className="opt-sub">{t.options.savedAs}</p>
             {smaller && (
               <p className="notice warn">
                 <Icon name="info" size={18} />
                 <span>{canSmaller ? t.options.smallerWarn : t.options.smallerUnavailable}</span>
               </p>
             )}
-          </div>
-
-          <div className="opt">
-            <Switch id="opt-sound" checked={!o.mute} onChange={(v) => setOptions({ mute: !v })} label={t.options.sound} sub={t.options.soundSub} />
-            <Switch id="opt-fps" checked={o.keepFps} onChange={(v) => setOptions({ keepFps: v })} label={t.options.fps} sub={t.options.fpsSub} />
           </div>
 
           <div className="opt">
@@ -100,6 +96,12 @@ export function OptionsDrawer({ onClose, returnFocusTo }: { onClose: () => void;
             </select>
           </div>
 
+          </div>
+          <div className="opt-col">
+            <div className="opt">
+            <Switch id="opt-sound" checked={!o.mute} onChange={(v) => setOptions({ mute: !v })} label={t.options.sound} sub={t.options.soundSub} />
+            <Switch id="opt-fps" checked={o.keepFps} onChange={(v) => setOptions({ keepFps: v })} label={t.options.fps} sub={t.options.fpsSub} />
+            </div>
           <div className="opt" role="radiogroup" aria-labelledby="opt-small">
             <span className="opt-label" id="opt-small">
               {t.options.small}
@@ -116,15 +118,11 @@ export function OptionsDrawer({ onClose, returnFocusTo }: { onClose: () => void;
             </div>
           </div>
 
-          <div className="opt">
-            <span className="opt-label">{t.options.output}</span>
-            <span className="mono" style={{ fontSize: 13 }}>
-              {t.options.outputAuto(container)}
-            </span>
-            <span className="opt-sub">{t.options.outputNote}</span>
           </div>
         </div>
-        <div className="opt-foot">
+        <details className="opt-foot">
+          <summary>{t.options.shareGroup}</summary>
+          <div className="opt-foot-row">
           <button type="button" className="btn soft sm" onClick={exportSetup}>
             <Icon name="doc" size={16} />
             {t.options.exportSetup}
@@ -137,6 +135,7 @@ export function OptionsDrawer({ onClose, returnFocusTo }: { onClose: () => void;
             <Icon name="link" size={16} />
             {t.options.copyLink}
           </button>
+          </div>
           <input
             ref={fileRef}
             type="file"
@@ -150,7 +149,7 @@ export function OptionsDrawer({ onClose, returnFocusTo }: { onClose: () => void;
               e.target.value = '';
             }}
           />
-        </div>
+        </details>
       </div>
     </>
   );

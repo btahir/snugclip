@@ -1,10 +1,11 @@
 'use client';
 import { formatBitrate, formatDuration, formatSize, type Report } from '@snugclip/core';
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Icon, type IconName } from '@/components/Icon';
 import { t } from '@/i18n/en';
 import { saveBlob } from '@/lib/download';
-import { limitText, reductionText, resolutionText, spareText } from '@/lib/format';
+import { limitText, reductionText, resultSize, spareText } from '@/lib/format';
 import type { Item } from '@/lib/tool-model';
 import { Compare } from './Compare';
 import { FitGlass } from './FitGlass';
@@ -18,66 +19,162 @@ const Q: Record<string, { cls: string; label: string; sub: string; icon: IconNam
   soft: { cls: 'soft', label: t.quality.soft, sub: t.quality.softSub, icon: 'eye' },
 };
 
-function Details({ r, onClose }: { r: Report; onClose: () => void }) {
-  const { showToast, engineName } = useTool();
+function encoderLabel(enc: string): string {
+  const m = /webcodecs:(\w+)/.exec(enc);
+  const names: Record<string, string> = { avc: 'H.264', hevc: 'HEVC', av1: 'AV1', vp9: 'VP9' };
+  if (m) return `WebCodecs ${names[m[1]!] ?? m[1]!.toUpperCase()}`;
+  return enc;
+}
+
+function audioLabel(r: Report): string {
+  const a = r.output?.audio;
+  if (!a) return t.details.muted;
+  const ch = a.channels === 1 ? 'mono' : 'stereo';
+  if (a.codec === 'copy') {
+    const src = r.input.probe?.audio;
+    return t.details.audioKept(`${(src?.codec ?? 'aac').toUpperCase()}${src?.bitrate ? ` ${formatBitrate(src.bitrate)}` : ''} ${ch}`);
+  }
+  return `${a.codec.toUpperCase()} ${a.bitrate ? formatBitrate(a.bitrate) : ''} ${ch}`.replace(/\s+/g, ' ');
+}
+
+/** Details as a popover anchored to its link (desktop) or a bottom sheet (phone). Never resizes the card. */
+function Details({ r, anchor, onClose }: { r: Report; anchor: HTMLElement | null; onClose: () => void }) {
+  const { showToast, engineName, exportReport } = useTool();
+  const ref = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ top: number; left: number; sheet: boolean } | null>(null);
   const o = r.output;
   const q = r.quality;
   const full = r.attempts.filter((a) => a.purpose !== 'calibration');
   const cal = r.attempts.filter((a) => a.purpose === 'calibration');
-  const rows: [string, string][] = [];
-  if (q) {
-    rows.push([t.details.ssimMean, q.ssimMean.toFixed(4)]);
-    rows.push([t.details.ssimMin, q.ssimMin.toFixed(4)]);
-    rows.push([t.details.psnr, `${q.psnrMean.toFixed(1)} dB`]);
-  }
-  if (o?.video) {
-    rows.push([t.details.resolution, `${o.video.width}×${o.video.height}`]);
-    rows.push([t.details.fps, `${Math.round(o.video.fps * 100) / 100}`]);
-    rows.push([t.details.codec, o.video.codec.toUpperCase()]);
-    if (o.video.bitrate) rows.push([t.details.videoBitrate, formatBitrate(o.video.bitrate)]);
-  }
-  if (o) rows.push([t.details.audio, o.audio ? `${o.audio.codec.toUpperCase()} ${o.audio.bitrate ? formatBitrate(o.audio.bitrate) : ''} ${o.audio.channels === 1 ? 'mono' : 'stereo'}`.trim() : t.details.muted]);
-  if (full.length) rows.push([t.details.attempts, String(full.length)]);
-  if (cal.length) rows.push([t.details.calibration, String(cal.length)]);
-  if (r.complexity) rows.push([t.details.motion, r.complexity]);
-  if (r.engine.encoder) rows.push([t.details.encoder, r.engine.encoder]);
-  if (engineName) rows.push([t.details.engine, engineName]);
-  if (o) rows.push([t.details.exact, `${o.bytes.toLocaleString('en-US')} B`]);
-  rows.push([t.details.target, `${r.target.bytes.toLocaleString('en-US')} B`]);
-  rows.push([t.details.time, formatDuration(r.elapsedMs / 1000)]);
-  const json = JSON.stringify(r, null, 2);
-  return (
-    <div className="details" role="region" aria-label={t.review.details}>
-      <dl>
-        {rows.map(([k, v]) => (
-          <div key={k} style={{ display: 'contents' }}>
-            <dt>{k}</dt>
-            <dd>{v}</dd>
-          </div>
-        ))}
-      </dl>
-      <div className="dacts">
-        <button
-          type="button"
-          className="btn sm soft"
-          onClick={async () => {
-            try {
-              await navigator.clipboard.writeText(json);
-              showToast(t.review.copied);
-            } catch {
-              saveBlob(new Blob([json], { type: 'application/json' }), 'snugclip-report.json');
-            }
-          }}
-        >
-          <Icon name="copy" size={16} />
-          {t.review.copyReport}
-        </button>
-        <button type="button" className="btn sm quiet" onClick={onClose}>
-          {t.review.hideDetails}
-        </button>
+
+  useLayoutEffect(() => {
+    const place = () => {
+      const sheet = window.matchMedia('(max-width: 760px)').matches;
+      if (sheet || !anchor) return setPos({ top: 0, left: 0, sheet: true });
+      const a = anchor.getBoundingClientRect();
+      const w = 340;
+      const h = ref.current?.offsetHeight ?? 420;
+      const left = Math.max(12, Math.min(a.right - w, window.innerWidth - w - 12));
+      const below = a.bottom + 8;
+      const top = below + h > window.innerHeight - 12 ? Math.max(12, a.top - h - 8) : below;
+      setPos({ top, left, sheet: false });
+    };
+    place();
+    window.addEventListener('resize', place);
+    window.addEventListener('scroll', place, true);
+    return () => {
+      window.removeEventListener('resize', place);
+      window.removeEventListener('scroll', place, true);
+    };
+  }, [anchor]);
+
+  useEffect(() => {
+    ref.current?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+        anchor?.focus();
+      }
+    };
+    const onDown = (e: MouseEvent) => {
+      if (!ref.current?.contains(e.target as Node) && e.target !== anchor) onClose();
+    };
+    document.addEventListener('keydown', onKey);
+    document.addEventListener('mousedown', onDown);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('mousedown', onDown);
+    };
+  }, [anchor, onClose]);
+
+  const group = (title: string, rows: [string, string][]) =>
+    rows.length ? (
+      <div className="dgroup">
+        <h4>{title}</h4>
+        <dl>
+          {rows.map(([k, v]) => (
+            <div key={k} className="drow">
+              <dt>{k}</dt>
+              <dd>{v}</dd>
+            </div>
+          ))}
+        </dl>
       </div>
-    </div>
+    ) : null;
+
+  const quality: [string, string][] = q
+    ? [
+        [t.details.ssimMean, q.ssimMean.toFixed(3)],
+        [t.details.ssimMin, q.ssimMin.toFixed(3)],
+        [t.details.psnr, `${q.psnrMean.toFixed(1)} dB`],
+      ]
+    : [];
+  const file: [string, string][] = [];
+  if (o?.video) {
+    file.push([t.details.resolution, `${o.video.width} × ${o.video.height}`]);
+    file.push([t.details.fps, `${Math.round(o.video.fps * 100) / 100} fps`]);
+    file.push([t.details.codec, o.video.codec === 'h264' ? 'H.264' : o.video.codec.toUpperCase()]);
+    if (o.video.bitrate) file.push([t.details.videoBitrate, formatBitrate(o.video.bitrate)]);
+  }
+  if (o) file.push([t.details.audio, audioLabel(r)]);
+  if (o) file.push([t.details.exact, `${o.bytes.toLocaleString('en-US')} bytes`]);
+  file.push([t.details.target, `${r.target.bytes.toLocaleString('en-US')} bytes`]);
+  const tech: [string, string][] = [];
+  if (full.length) tech.push([t.details.attempts, String(full.length)]);
+  if (cal.length) tech.push([t.details.calibration, String(cal.length)]);
+  if (r.complexity) tech.push([t.details.motion, r.complexity]);
+  if (r.engine.encoder) tech.push([t.details.encoder, encoderLabel(r.engine.encoder)]);
+  tech.push([t.details.time, formatDuration(r.elapsedMs / 1000)]);
+  const json = JSON.stringify(r, null, 2);
+
+  const body = (
+    <>
+      {pos?.sheet && <div className="sheet-scrim details-scrim" onClick={onClose} aria-hidden="true" />}
+      <div
+        ref={ref}
+        tabIndex={-1}
+        className={`details-pop${pos?.sheet ? ' sheet' : ''}`}
+        role="dialog"
+        aria-modal={pos?.sheet ? true : undefined}
+        aria-label={t.review.details}
+        style={pos && !pos.sheet ? { top: pos.top, left: pos.left } : pos ? undefined : { visibility: 'hidden' }}
+        data-testid="details"
+      >
+        <div className="dhead">
+          <b>{t.review.details}</b>
+          <button type="button" className="btn quiet icon" aria-label={t.review.hideDetails} onClick={onClose}>
+            <Icon name="x" />
+          </button>
+        </div>
+        {group(t.details.groupQuality, quality)}
+        {group(t.details.groupFile, file)}
+        {group(t.details.groupTech, tech)}
+        {engineName && <p className="dnote">{engineName}</p>}
+        <div className="dacts">
+          <button
+            type="button"
+            className="btn sm"
+            onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(json);
+                showToast(t.review.copied);
+              } catch {
+                saveBlob(new Blob([json], { type: 'application/json' }), 'snugclip-report.json');
+              }
+            }}
+          >
+            <Icon name="copy" size={16} />
+            {t.review.copyReport}
+          </button>
+          <button type="button" className="btn sm" onClick={exportReport}>
+            <Icon name="doc" size={16} />
+            {t.review.saveReport}
+          </button>
+        </div>
+      </div>
+    </>
   );
+  return createPortal(body, document.body);
 }
 
 export function ReviewCard({ it }: { it: Item }) {
@@ -87,6 +184,7 @@ export function ReviewCard({ it }: { it: Item }) {
   const out = r.output?.bytes ?? it.bytes;
   const pass = r.passThrough;
   const [details, setDetails] = useState(false);
+  const detailsBtn = useRef<HTMLButtonElement>(null);
   const [canShare, setCanShare] = useState(false);
   // Pour once per item; re-expanding shows the still level.
   const [settle] = useState(() => !pass && !SETTLED.has(it.id));
@@ -102,12 +200,22 @@ export function ReviewCard({ it }: { it: Item }) {
     }
   }, []);
 
-  const size = formatSize(out);
+  const size = resultSize(out);
   const [num, unit] = size.split(' ');
   const spare = spareText(out, target);
   const limit = limitText(target);
   const v = r.input.probe?.video;
-  const meta = [formatDuration(r.output?.durationSec ?? r.input.probe?.durationSec ?? 0), resolutionText(r.output?.video?.width ?? v?.displayWidth, r.output?.video?.height ?? v?.displayHeight, r.output?.video?.fps ?? v?.fps), (r.output?.video?.codec ?? v?.codec ?? '').toUpperCase().replace('H264', 'H.264')].filter(Boolean).join(' · ');
+  const srcP = v ? `${Math.min(v.displayWidth, v.displayHeight)}p` : '';
+  const outV = r.output?.video;
+  const outP = outV && outV.width && outV.height ? `${Math.min(outV.width, outV.height)}p` : srcP;
+  const fps = Math.round(outV?.fps ?? v?.fps ?? 0);
+  const meta = [
+    formatDuration(r.output?.durationSec ?? r.input.probe?.durationSec ?? 0),
+    pass || srcP === outP ? srcP : `${srcP} \u2192 ${outP}`,
+    fps ? `${fps} fps` : '',
+  ]
+    .filter(Boolean)
+    .join(' · ');
   const q = r.quality ? Q[r.quality.verdict] : null;
 
   return (
@@ -156,7 +264,7 @@ export function ReviewCard({ it }: { it: Item }) {
               <b>{q.label}</b>
               <span>{q.sub}</span>
             </div>
-            <button type="button" className="qd" aria-expanded={details} onClick={() => setDetails((d) => !d)}>
+            <button ref={detailsBtn} type="button" className="qd" aria-expanded={details} aria-haspopup="dialog" onClick={() => setDetails((d) => !d)}>
               {t.review.details}
             </button>
           </div>
@@ -167,12 +275,12 @@ export function ReviewCard({ it }: { it: Item }) {
               <b>{t.quality.unknown}</b>
               <span>{t.quality.unknownSub}</span>
             </div>
-            <button type="button" className="qd" aria-expanded={details} onClick={() => setDetails((d) => !d)}>
+            <button ref={detailsBtn} type="button" className="qd" aria-expanded={details} aria-haspopup="dialog" onClick={() => setDetails((d) => !d)}>
               {t.review.details}
             </button>
           </div>
         )}
-        {details && <Details r={r} onClose={() => setDetails(false)} />}
+        {details && <Details r={r} anchor={detailsBtn.current} onClose={() => setDetails(false)} />}
         <div className={`acts${canShare ? '' : ' single'}`}>
           <button type="button" className="btn primary" onClick={() => void tool.download(it.id)} data-testid="download">
             <Icon name="down" />

@@ -4,6 +4,11 @@ import { KEYWORD_PAGES } from '@/content/pages';
 import { t } from '@/i18n/en';
 import { Logo } from './Header';
 
+function footerLabel(l: string): string {
+  if (/^(To|For) /.test(l)) return `Compress ${l[0]!.toLowerCase()}${l.slice(1)}`;
+  return l;
+}
+
 export function Footer() {
   return (
     <footer className="site-footer">
@@ -19,7 +24,7 @@ export function Footer() {
             <ul className="two">
               {KEYWORD_PAGES.map((p) => (
                 <li key={p.slug}>
-                  <Link href={`/${p.slug}/`}>{p.navLabel}</Link>
+                  <Link href={`/${p.slug}/`}>{footerLabel(p.navLabel)}</Link>
                 </li>
               ))}
             </ul>
