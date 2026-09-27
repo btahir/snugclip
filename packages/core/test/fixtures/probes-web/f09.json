@@ -1,0 +1,29 @@
+{
+ "fixture": "f09",
+ "file": "f09-vp9-720p30-10s.webm",
+ "probe": {
+  "container": "webm",
+  "sizeBytes": 2654710,
+  "durationSec": 10.008,
+  "video": {
+   "codec": "vp9",
+   "decodable": true,
+   "codedWidth": 1280,
+   "codedHeight": 720,
+   "displayWidth": 1280,
+   "displayHeight": 720,
+   "rotation": 0,
+   "fps": 30,
+   "hdr": false,
+   "bitrate": 1986175,
+   "bitDepth": 8
+  },
+  "audio": {
+   "codec": "opus",
+   "channels": 1,
+   "sampleRate": 48000,
+   "decodable": true,
+   "bitrate": 132135
+  }
+ }
+}

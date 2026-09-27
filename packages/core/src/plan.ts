@@ -290,7 +290,7 @@ export function minimumBytes(probe: Probe, options: Partial<Options>, caps: Engi
   const { codec, container } = chooseCodec(opts.codec, caps);
   const preset = target?.presetId ? getPreset(target.presetId) : undefined;
   const entries = buildRungs(probe, opts, codec, caps, preset?.maxShortSide);
-  return minimumFor(probe, opts, codec, container, entries, D, marginFor(caps, codec), caps);
+  return minimumFor(probe, opts, codec, container, entries, D, TUNING.planMargin, caps);
 }
 
 function minimumFor(probe: Probe, opts: Options, codec: VideoCodecId, container: ContainerId, entries: LadderEntry[], D: number, m: number, caps?: EngineCapabilities): number {
@@ -323,7 +323,7 @@ export function plan(probe: Probe, target: Target, options: Partial<Options>, ca
   let audioCodec: AudioCodecId = container === 'webm' ? 'opus' : 'aac';
   let m = marginFor(caps, codec);
   let entries = buildRungs(probe, opts, codec, caps, preset?.maxShortSide);
-  const minBytes = minimumFor(probe, opts, codec, container, entries, D, m, caps);
+  const minBytes = minimumFor(probe, opts, codec, container, entries, D, TUNING.planMargin, caps);
 
   // Pass-through (§4.6)
   const passThrough =
@@ -368,7 +368,7 @@ export function plan(probe: Probe, target: Target, options: Partial<Options>, ca
   const needsAacEncode = () => {
     if (container !== 'mp4' || !probe.audio || opts.mute) return false;
     if (caps.audioCodecs.includes('aac')) return false;
-    const S = Math.floor(T * (1 - m));
+    const S = Math.floor(T * (1 - TUNING.planMargin));
     const btot = ((S - overheadBytes(container, D, entries[0]!.fps, { codec: 'aac', sampleRate: 48000 })) * 8) / D / 1000;
     return chooseAudio(probe, opts, 'aac', D, btot, caps, trim).mode !== 'copy';
   };
@@ -386,19 +386,21 @@ export function plan(probe: Probe, target: Target, options: Partial<Options>, ca
   }
   if (v.hdr) warnings.push({ code: 'hdr-to-sdr', message: 'HDR source: colours are converted to standard range and may shift slightly.' });
 
-  // Budget (§4.1) and audio (§4.2)
+  // Budget (§4.1) and audio (§4.2). Decisions use the engine-independent planning budget Sd; the
+  // engine's margin only sets the requested bitrate (vbr0) below.
   const S = Math.floor(T * (1 - m));
+  const Sd = Math.floor(T * (1 - TUNING.planMargin));
   const hasAudio = !!probe.audio && !opts.mute;
   const audioSr = hasAudio ? audioSampleRate(audioCodec, probe.audio!.sampleRate) : 0;
   const O0 = overheadBytes(container, D, entries[0]!.fps, hasAudio ? { codec: audioCodec, sampleRate: audioSr } : null);
-  let audio = chooseAudio(probe, opts, audioCodec, D, ((S - O0) * 8) / D / 1000, caps, trim);
+  let audio = chooseAudio(probe, opts, audioCodec, D, ((Sd - O0) * 8) / D / 1000, caps, trim);
 
   const { good, floor, ceiling } = bppThresholds(codec);
   const budget = (a: PlanAudio): Budgeted => ({
     entries,
     rungs: entries.map((e) => {
       const oh = overheadBytes(container, D, e.fps, a.mode === 'none' ? null : { codec: a.codec!, sampleRate: a.sampleRate! });
-      const vbr = ((S - oh - a.bytes) * 8) / D;
+      const vbr = ((Sd - oh - a.bytes) * 8) / D;
       return { ...e, bpp: vbr / (e.width * e.height * e.fps) };
     }),
   });
@@ -428,7 +430,7 @@ export function plan(probe: Probe, target: Target, options: Partial<Options>, ca
   const chosen = rungs[idx]!;
   const oh = overheadBytes(container, D, chosen.fps, audio.mode === 'none' ? null : { codec: audio.codec!, sampleRate: audio.sampleRate! });
   const vbr0 = ((S - oh - audio.bytes) * 8) / D;
-  const feasible = T >= minBytes && vbr0 > 0;
+  const feasible = T >= minBytes && ((Sd - oh - audio.bytes) * 8) / D > 0;
 
   if (audio.mode === 'copy') reasons.push(`Audio: source ${audioCodec.toUpperCase()} at ${formatBitrate(audio.bitrate!)} copied unchanged.`);
   else if (audio.mode === 'encode') reasons.push(`Audio: ${audioCodec.toUpperCase()} ${formatBitrate(audio.bitrate!)}${audio.channels === 1 ? ' mono' : ''}.`);
@@ -472,7 +474,8 @@ export function plan(probe: Probe, target: Target, options: Partial<Options>, ca
     capped = 'source-bitrate';
   }
   const bpp = vbr / (chosen.width * chosen.height * chosen.fps);
-  const tier: 'A' | 'B' = bpp / TUNING.k[codec] >= TUNING.bppGood - 1e-9 ? 'A' : 'B';
+  // Tier from the planning budget (engine-independent), not from the engine-margin bitrate.
+  const tier: 'A' | 'B' = chosen.bpp / TUNING.k[codec] >= TUNING.bppGood - 1e-9 ? 'A' : 'B';
   const video: PlanVideo = {
     codec,
     width: chosen.width,

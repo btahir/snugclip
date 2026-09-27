@@ -17,7 +17,9 @@ import {
   VideoSampleSource,
   WebMOutputFormat,
 } from 'mediabunny';
-import type { ConversionVideoOptions, InputTrack, InputVideoTrack, OutputFormat, Target } from 'mediabunny';
+import { EncodedAudioPacketSource, EncodedVideoPacketSource } from 'mediabunny';
+import type { ConversionVideoOptions, EncodedPacket, InputTrack, InputVideoTrack, OutputFormat, Target } from 'mediabunny';
+import { planAacRetime } from './aac-timing.js';
 import { encoderLabel, mimeFor } from './codec-strings.js';
 import {
   assessDiscarded,
@@ -32,6 +34,8 @@ import {
   outputFormatSpec,
   QUOTA_HEADROOM,
   resolveRange,
+  frameSlotMapper,
+  needsFrameRateConversion,
 } from './conversion-options.js';
 import type { DiscardReason, MediaRange, TargetKind } from './conversion-options.js';
 import { mapEngineError } from './errors-map.js';
@@ -44,6 +48,10 @@ import type { PauseGate } from './pause.js';
 export interface EncodeContext {
   /** Result of the Safari latency probe at capability time. */
   probedLatency: LatencyMode;
+  /** Which AAC encoder this encode uses (engine.ts routing); 'native' triggers the timing fix. */
+  audioEncoder?: 'native' | 'wasm' | null;
+  /** Source average frame rate (from the probe), for nearest-neighbour frame-rate conversion. */
+  sourceFps?: number;
   pause?: PauseGate;
   /** Called with each OPFS-backed output so discard() can delete its file. */
   onOpfsOutput?: (blob: Blob, sink: OpfsSink) => void;
@@ -67,6 +75,24 @@ function hdrToSdrProcess(width: number, height: number): VideoProcess {
     }
     sample.drawWithFit(ctx, { fit: 'fill' });
     return new VideoSample(canvas, { timestamp: sample.timestamp, duration: sample.duration });
+  };
+}
+
+/** Wraps an optional process with nearest-neighbour frame-rate conversion (see frameSlotMapper). */
+function resampleProcess(outFps: number, srcFps: number, endSec: number, inner?: VideoProcess): VideoProcess {
+  const slots = frameSlotMapper(outFps, srcFps, endSec);
+  return async (sample) => {
+    const ks = slots(sample.timestamp);
+    if (!ks.length) return null;
+    const base = inner ? ((await inner(sample)) as VideoSample) : sample;
+    const out = ks.map((k) => {
+      const c = base.clone();
+      c.setTimestamp(k / outFps);
+      c.setDuration(1 / outFps);
+      return c;
+    });
+    if (base !== sample) base.close();
+    return out;
   };
 }
 
@@ -98,6 +124,59 @@ async function makeSink(plan: EncodePlan<Blob>, kind: TargetKind, estimate: numb
     },
     abort: async () => {},
   };
+}
+
+/**
+ * Re-muxes an MP4 whose audio came from the native AAC encoder: hides the encoder priming behind an
+ * edit list and drops audio past the video end (see aac-timing.ts). No re-encode. Returns null when
+ * nothing needs changing.
+ */
+async function retimeNativeAac(blob: Blob, plan: EncodePlan<Blob>, kind: TargetKind, estimate: number, signal: AbortSignalLike): Promise<{ blob: Blob; sink: Sink } | null> {
+  const input = new Input({ source: new BlobSource(blob), formats: ALL_FORMATS });
+  let sink: Sink | null = null;
+  try {
+    const [vt, at] = await Promise.all([input.getPrimaryVideoTrack(), input.getPrimaryAudioTrack()]);
+    if (!vt || !at || (await at.getCodec()) !== 'aac') return null;
+    let videoEnd = 0;
+    for await (const p of new EncodedPacketSink(vt).packets(undefined, undefined, { metadataOnly: true })) videoEnd = Math.max(videoEnd, p.timestamp + p.duration);
+    const audio: EncodedPacket[] = [];
+    for await (const p of new EncodedPacketSink(at).packets()) audio.push(p);
+    const r = planAacRetime(audio, at.sampleRate, videoEnd);
+    if (!r.changed) return null;
+    throwIfAborted(signal);
+    sink = await makeSink(plan, kind, estimate);
+    const output = new Output({ format: makeFormat(plan, kind), target: sink.target });
+    const videoCodec = await vt.getCodec();
+    if (!videoCodec) return null;
+    const vs = new EncodedVideoPacketSource(videoCodec);
+    const as = new EncodedAudioPacketSource('aac');
+    output.addVideoTrack(vs, { rotation: await vt.getRotation() });
+    output.addAudioTrack(as);
+    await output.start();
+    const [vcfg, acfg] = await Promise.all([vt.getDecoderConfig(), at.getDecoderConfig()]);
+    const shifted = audio.slice(0, r.keep).map((p) => p.clone({ timestamp: p.timestamp - r.shiftSec }));
+    let ai = 0;
+    const addAudioUpTo = async (t: number) => {
+      while (ai < shifted.length && shifted[ai]!.timestamp <= t) {
+        await as.add(shifted[ai]!, ai === 0 && acfg ? { decoderConfig: acfg } : undefined);
+        ai++;
+      }
+    };
+    let first = true;
+    for await (const p of new EncodedPacketSink(vt).packets()) {
+      await addAudioUpTo(p.timestamp);
+      await vs.add(p, first && vcfg ? { decoderConfig: vcfg } : undefined);
+      first = false;
+    }
+    await addAudioUpTo(Infinity);
+    await output.finalize();
+    return { blob: await sink.finish(), sink };
+  } catch (e) {
+    await sink?.abort().catch(() => {});
+    throw e;
+  } finally {
+    input.dispose();
+  }
 }
 
 /** Sums packet bytes per track type in a finished output (exact: from the container index). */
@@ -153,13 +232,15 @@ async function runConversion(
   ctx: EncodeContext,
   onProgress?: Progress,
 ): Promise<void> {
-  const process = plan.hdrToSdr ? hdrToSdrProcess(plan.video.width, plan.video.height) : undefined;
+  const hdr = plan.hdrToSdr ? hdrToSdrProcess(plan.video.width, plan.video.height) : undefined;
+  const own = needsFrameRateConversion(plan.video.fps, ctx.sourceFps);
+  const process = own ? resampleProcess(plan.video.fps, ctx.sourceFps!, range.len, hdr) : hdr;
   const conversion = await Conversion.init({
     input,
     output,
     tracks: 'primary',
     trim: conversionTrim(range, plan.trim),
-    video: buildVideoOptions(plan, process),
+    video: buildVideoOptions(plan, process, { ownFrameRate: own }),
     audio: buildAudioOptions(plan.audio),
     tags: {}, // strip source metadata (location, device) — smaller and private
     showWarnings: false,
@@ -221,7 +302,9 @@ async function runManual(
     });
   }
   const process = plan.hdrToSdr ? hdrToSdrProcess(plan.video.width, plan.video.height) : undefined;
-  const source = new VideoSampleSource(buildVideoEncodingConfig(plan, 'realtime', process ? { process } : {}));
+  const own = needsFrameRateConversion(plan.video.fps, ctx.sourceFps);
+  const slots = own ? frameSlotMapper(plan.video.fps, ctx.sourceFps!, range.len) : null;
+  const source = new VideoSampleSource(buildVideoEncodingConfig(plan, 'realtime', { ...(process ? { process } : {}), ownFrameRate: own }));
   output.addVideoTrack(source, { frameRate: plan.video.fps });
 
   // Audio rides along as a composable Conversion into the same Output (copy/encode/resample, AAC
@@ -263,7 +346,19 @@ async function runManual(
           if (s0 >= s1) continue;
           sample.setTimestamp(s0 - range.start);
           sample.setDuration(s1 - s0);
-          await source.add(sample);
+          if (slots) {
+            const fps = plan.video.fps;
+            for (const k of slots(s0 - range.start)) {
+              const c = sample.clone();
+              c.setTimestamp(k / fps);
+              c.setDuration(1 / fps);
+              try {
+                await source.add(c);
+              } finally {
+                c.close();
+              }
+            }
+          } else await source.add(sample);
           const done = s1 - range.start;
           progress.report(range.len > 0 ? done / range.len : 0, done);
         } finally {
@@ -309,7 +404,15 @@ export async function encodeBlob(
     if (latency === 'realtime') await runManual(input, output, plan, range, signal, ctx, opts.onProgress);
     else await runConversion(input, output, plan, range, signal, ctx, opts.onProgress);
     throwIfAborted(signal);
-    const blob = await sink.finish();
+    let blob = await sink.finish();
+    if (ctx.audioEncoder === 'native' && plan.container === 'mp4') {
+      const fixed = await retimeNativeAac(blob, plan, kind, estimate, signal);
+      if (fixed) {
+        await sink.abort().catch(() => {});
+        sink = fixed.sink;
+        blob = fixed.blob;
+      }
+    }
     if (sink.opfs) ctx.onOpfsOutput?.(blob, sink.opfs);
     const counts = await countTrackBytes(blob).catch(() => null);
     const result: EncodeResult<Blob> = {

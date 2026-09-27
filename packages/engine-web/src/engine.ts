@@ -124,6 +124,17 @@ export function createWebEngine(opts: WebEngineOptions = {}): WebEngine {
   setAacRoute((cfg) => aacNeedsWasm(state.aac, cfg.bitrate ?? 0, cfg.numberOfChannels, cfg.sampleRate));
   let capsPromise: Promise<EngineCapabilities> | null = null;
   const opfsOutputs = new WeakMap<Blob, OpfsSink>();
+  const probes = new WeakMap<Blob, Promise<Probe>>();
+  const probeCached = (b: Blob): Promise<Probe> => {
+    let p = probes.get(b);
+    if (!p) {
+      p = probeBlob(b);
+      probes.set(b, p);
+      p.catch(() => probes.delete(b));
+    }
+    return p;
+  };
+  const sourceFps = (p: Probe): number | undefined => (p.video && p.video.fps > 0 ? p.video.fps : undefined);
 
   const capabilities = (): Promise<EngineCapabilities> => {
     if (!capsPromise) {
@@ -153,7 +164,7 @@ export function createWebEngine(opts: WebEngineOptions = {}): WebEngine {
     },
     capabilities,
     probe(input: Blob): Promise<Probe> {
-      return probeBlob(input);
+      return probeCached(input);
     },
     async encode(plan: EncodePlan<Blob>, o: { signal: AbortSignalLike; onProgress?: (p: EncodeProgress) => void }): Promise<EncodeResult<Blob>> {
       await capabilities(); // the latency probe and native-AAC check happen there
@@ -163,6 +174,8 @@ export function createWebEngine(opts: WebEngineOptions = {}): WebEngine {
         state.lastAudioEncoder = path;
         const r = await encodeBlob(plan, o, {
           probedLatency: state.latency,
+          audioEncoder: path,
+          ...(sourceFps(await probeCached(plan.input)) !== undefined ? { sourceFps: sourceFps(await probeCached(plan.input))! } : {}),
           ...(opts.pause ? { pause: opts.pause } : {}),
           onOpfsOutput: (blob, sink) => opfsOutputs.set(blob, sink),
         });

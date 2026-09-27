@@ -1,0 +1,41 @@
+{
+ "note": "ffmpeg 8.1.1 (Homebrew, macOS) capabilities, recorded 2026-09-27 from engine-ffmpeg buildCapabilities",
+ "id": "ffmpeg",
+ "version": "8.1.1",
+ "encoderName": {
+  "h264": "libx264",
+  "hevc": "libx265",
+  "av1": "libsvtav1",
+  "vp9": "libvpx-vp9"
+ },
+ "videoCodecs": [
+  "h264",
+  "hevc",
+  "av1",
+  "vp9"
+ ],
+ "audioCodecs": [
+  "aac",
+  "opus"
+ ],
+ "containers": [
+  "mp4",
+  "webm"
+ ],
+ "twoPass": true,
+ "twoPassCodecs": [
+  "h264",
+  "hevc",
+  "vp9"
+ ],
+ "initialMargin": 0.02,
+ "marginByCodec": {
+  "h264": 0.02,
+  "hevc": 0.02,
+  "av1": 0.04,
+  "vp9": 0.02
+ },
+ "rateCalibration": "auto",
+ "audioCopyWithTrim": true,
+ "maxEncodeShortSide": {}
+}

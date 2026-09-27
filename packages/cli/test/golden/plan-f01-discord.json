@@ -37,7 +37,7 @@
         "targetBytes": 20000000,
         "marginBytes": 0,
         "overheadBytes": 0,
-        "minimumBytes": 131203,
+        "minimumBytes": 133936,
         "durationSec": 10,
         "container": "mp4",
         "video": null,

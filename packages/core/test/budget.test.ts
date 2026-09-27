@@ -95,7 +95,7 @@ describe('impossible targets (A4)', () => {
     const r = plan(probe, { bytes: T, label: 'x' }, { codec }, c);
     expect(r.feasible).toBe(false);
     expect(r.video).toBeNull();
-    expect(r.minimumBytes).toBe(formula(probe, codec, probe.durationSec, c.initialMargin));
+    expect(r.minimumBytes).toBe(formula(probe, codec, probe.durationSec, TUNING.planMargin));
     expect(minimumBytes(probe, { codec }, c)).toBe(r.minimumBytes);
   });
   it('T = minimumBytes is feasible; one byte less is not', () => {
@@ -104,9 +104,9 @@ describe('impossible targets (A4)', () => {
     expect(plan(probe, { bytes: min, label: 'x' }, {}, caps).feasible).toBe(true);
     expect(plan(probe, { bytes: min - 1, label: 'x' }, {}, caps).feasible).toBe(false);
   });
-  it('web margin (0.04) raises the minimum', () => {
+  it('the minimum is engine-independent (planning margin), whatever the engine margin', () => {
     const probe = makeProbe({ durationSec: 900 });
-    expect(minimumBytes(probe, {}, webCaps())).toBeGreaterThan(minimumBytes(probe, {}, caps));
+    expect(minimumBytes(probe, {}, webCaps())).toBe(minimumBytes(probe, {}, caps));
   });
   it('keyframe interval: 2 s tier A, 5 s tier B', () => {
     const a = plan(makeProbe({ durationSec: 30 }), { bytes: 25 * MB, label: 'x' }, {}, caps);

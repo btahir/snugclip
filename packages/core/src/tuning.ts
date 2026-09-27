@@ -9,6 +9,13 @@ export const TUNING = {
   bppGood: 0.08,
   bppFloor: 0.04,
   bppCeiling: 0.2,
+  /**
+   * Engine-independent planning margin (extension of PLAN §4.1). Every *decision* (audio rung,
+   * resolution/fps rung, tier, feasibility, minimumBytes) uses T × (1 − planMargin), so the web app
+   * and the CLI make the same plan for the same probe (ACCEPTANCE D1). The engine's own margin
+   * (caps.initialMargin / marginByCodec) only sets the first attempt's requested bitrate.
+   */
+  planMargin: 0.04,
   /** Cap relative to the source video bitrate. */
   sourceBitrateFactor: 1.1,
 

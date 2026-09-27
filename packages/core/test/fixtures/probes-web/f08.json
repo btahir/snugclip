@@ -1,0 +1,30 @@
+{
+ "fixture": "f08",
+ "file": "f08-hevc-1080p30-10s.mov",
+ "probe": {
+  "container": "mov",
+  "sizeBytes": 5176607,
+  "durationSec": 10,
+  "video": {
+   "codec": "hevc",
+   "decodable": true,
+   "codedWidth": 1920,
+   "codedHeight": 1080,
+   "displayWidth": 1920,
+   "displayHeight": 1080,
+   "rotation": 0,
+   "fps": 30,
+   "hdr": false,
+   "frameCount": 300,
+   "bitrate": 4000631,
+   "bitDepth": 8
+  },
+  "audio": {
+   "codec": "aac",
+   "channels": 2,
+   "sampleRate": 48000,
+   "decodable": true,
+   "bitrate": 128151
+  }
+ }
+}

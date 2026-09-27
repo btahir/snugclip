@@ -1,0 +1,32 @@
+{
+ "fixture": "f13",
+ "file": "f13-hdr-pq-hevc-1080p-5s.mov",
+ "probe": {
+  "container": "mov",
+  "sizeBytes": 3193192,
+  "durationSec": 5,
+  "video": {
+   "codec": "hevc",
+   "decodable": true,
+   "codedWidth": 1920,
+   "codedHeight": 1088,
+   "displayWidth": 1920,
+   "displayHeight": 1080,
+   "rotation": 0,
+   "fps": 30,
+   "hdr": true,
+   "frameCount": 150,
+   "bitrate": 4965228,
+   "transfer": "smpte2084",
+   "primaries": "bt2020",
+   "bitDepth": 10
+  },
+  "audio": {
+   "codec": "aac",
+   "channels": 2,
+   "sampleRate": 48000,
+   "decodable": true,
+   "bitrate": 127907
+  }
+ }
+}

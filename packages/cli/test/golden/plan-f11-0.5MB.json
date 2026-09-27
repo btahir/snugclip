@@ -36,7 +36,7 @@
         "targetBytes": 500000,
         "marginBytes": 10000,
         "overheadBytes": 154762,
-        "minimumBytes": 3451186,
+        "minimumBytes": 3523086,
         "durationSec": 300,
         "container": "mp4",
         "audio": {
@@ -53,41 +53,41 @@
             "width": 640,
             "height": 360,
             "fps": 30,
-            "bpp": -0.0024913657407407406
+            "bpp": -0.002529945987654321
           },
           {
             "shortSide": 240,
             "width": 426,
             "height": 240,
             "fps": 30,
-            "bpp": -0.00561434533124674
+            "bpp": -0.0057012867327421324
           },
           {
             "shortSide": 240,
             "width": 426,
             "height": 240,
             "fps": 24,
-            "bpp": -0.0067831898800208654
+            "bpp": -0.006891866631890106
           },
           {
             "shortSide": 240,
             "width": 426,
             "height": 240,
             "fps": 20,
-            "bpp": -0.007952034428794993
+            "bpp": -0.008082446531038082
           },
           {
             "shortSide": 240,
             "width": 426,
             "height": 240,
             "fps": 15,
-            "bpp": -0.010289723526343244
+            "bpp": -0.010463606329334029
           }
         ],
         "warnings": [],
         "reasons": [
           "Audio: AAC 24 kbps mono.",
-          "Too small: the smallest Snugclip can make is 3.46 MB (426x240 at 15 fps). Trim it, mute it, or pick a bigger limit."
+          "Too small: the smallest Snugclip can make is 3.53 MB (426x240 at 15 fps). Trim it, mute it, or pick a bigger limit."
         ],
         "feasible": false,
         "video": null

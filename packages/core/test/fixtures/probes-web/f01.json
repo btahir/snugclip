@@ -1,0 +1,30 @@
+{
+ "fixture": "f01",
+ "file": "f01-testsrc2-1080p30-10s.mp4",
+ "probe": {
+  "container": "mp4",
+  "sizeBytes": 7844773,
+  "durationSec": 10,
+  "video": {
+   "codec": "h264",
+   "decodable": true,
+   "codedWidth": 1920,
+   "codedHeight": 1080,
+   "displayWidth": 1920,
+   "displayHeight": 1080,
+   "rotation": 0,
+   "fps": 30,
+   "hdr": false,
+   "frameCount": 300,
+   "bitrate": 6137675,
+   "bitDepth": 8
+  },
+  "audio": {
+   "codec": "aac",
+   "channels": 2,
+   "sampleRate": 48000,
+   "decodable": true,
+   "bitrate": 128127
+  }
+ }
+}

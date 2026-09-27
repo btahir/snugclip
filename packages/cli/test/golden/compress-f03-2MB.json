@@ -66,7 +66,7 @@
     "targetBytes": 2000000,
     "marginBytes": 40000,
     "overheadBytes": 35626,
-    "minimumBytes": 360170,
+    "minimumBytes": 367673,
     "durationSec": 30,
     "container": "mp4",
     "audio": {
@@ -83,63 +83,63 @@
         "width": 1920,
         "height": 1080,
         "fps": 30,
-        "bpp": 0.007454449588477367
+        "bpp": 0.0072829818244170095
       },
       {
         "shortSide": 720,
         "width": 1280,
         "height": 720,
         "fps": 30,
-        "bpp": 0.016772511574074073
+        "bpp": 0.016386709104938273
       },
       {
         "shortSide": 540,
         "width": 960,
         "height": 540,
         "fps": 30,
-        "bpp": 0.029817798353909467
+        "bpp": 0.029131927297668038
       },
       {
         "shortSide": 480,
         "width": 854,
         "height": 480,
         "fps": 30,
-        "bpp": 0.03770869112672392
+        "bpp": 0.03684131321016567
       },
       {
         "shortSide": 360,
         "width": 640,
         "height": 360,
         "fps": 30,
-        "bpp": 0.0670900462962963
+        "bpp": 0.06554683641975309
       },
       {
         "shortSide": 240,
         "width": 426,
         "height": 240,
         "fps": 30,
-        "bpp": 0.151188836724048
+        "bpp": 0.1477111806642323
       },
       {
         "shortSide": 240,
         "width": 426,
         "height": 240,
         "fps": 24,
-        "bpp": 0.18922078768909756
+        "bpp": 0.18487371761432794
       },
       {
         "shortSide": 240,
         "width": 426,
         "height": 240,
         "fps": 20,
-        "bpp": 0.2272527386541471
+        "bpp": 0.22203625456442358
       },
       {
         "shortSide": 240,
         "width": 426,
         "height": 240,
         "fps": 15,
-        "bpp": 0.30331664058424623
+        "bpp": 0.2963613284646148
       }
     ],
     "warnings": [],
@@ -168,7 +168,7 @@
         "width": 426,
         "height": 240,
         "fps": 30,
-        "bpp": 0.151188836724048
+        "bpp": 0.1477111806642323
       },
       "fits": true
     },
@@ -179,7 +179,7 @@
         "width": 1920,
         "height": 1080,
         "fps": 30,
-        "bpp": 0.007454449588477367
+        "bpp": 0.0072829818244170095
       },
       "fits": true
     }
@@ -199,6 +199,6 @@
     "encoder": "libx264"
   },
   "elapsedMs": 0,
-  "minimumBytes": 360170,
+  "minimumBytes": 367673,
   "minimumSource": "planned"
 }

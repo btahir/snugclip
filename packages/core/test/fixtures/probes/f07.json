@@ -1,0 +1,30 @@
+{
+ "fixture": "f07",
+ "file": "f07-portrait-720x1280-5s.mp4",
+ "probe": {
+  "container": "mp4",
+  "sizeBytes": 1373464,
+  "durationSec": 5,
+  "video": {
+   "codec": "h264",
+   "decodable": true,
+   "codedWidth": 720,
+   "codedHeight": 1280,
+   "displayWidth": 720,
+   "displayHeight": 1280,
+   "rotation": 0,
+   "fps": 30,
+   "hdr": false,
+   "frameCount": 150,
+   "bitrate": 2089982,
+   "bitDepth": 8
+  },
+  "audio": {
+   "codec": "aac",
+   "channels": 2,
+   "sampleRate": 48000,
+   "decodable": true,
+   "bitrate": 96129
+  }
+ }
+}

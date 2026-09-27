@@ -1,0 +1,30 @@
+{
+ "fixture": "f05",
+ "file": "f05-testsrc2-2160p30-5s.mp4",
+ "probe": {
+  "container": "mp4",
+  "sizeBytes": 10592888,
+  "durationSec": 5,
+  "video": {
+   "codec": "h264",
+   "decodable": true,
+   "codedWidth": 3840,
+   "codedHeight": 2160,
+   "displayWidth": 3840,
+   "displayHeight": 2160,
+   "rotation": 0,
+   "fps": 30,
+   "hdr": false,
+   "frameCount": 150,
+   "bitrate": 16809184,
+   "bitDepth": 8
+  },
+  "audio": {
+   "codec": "aac",
+   "channels": 2,
+   "sampleRate": 48000,
+   "decodable": true,
+   "bitrate": 128061
+  }
+ }
+}

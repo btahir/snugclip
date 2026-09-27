@@ -1,0 +1,30 @@
+{
+ "fixture": "f04",
+ "file": "f04-testsrc2-720p60-10s.mp4",
+ "probe": {
+  "container": "mp4",
+  "sizeBytes": 6568321,
+  "durationSec": 10,
+  "video": {
+   "codec": "h264",
+   "decodable": true,
+   "codedWidth": 1280,
+   "codedHeight": 720,
+   "displayWidth": 1280,
+   "displayHeight": 720,
+   "rotation": 0,
+   "fps": 60,
+   "hdr": false,
+   "frameCount": 600,
+   "bitrate": 5112410,
+   "bitDepth": 8
+  },
+  "audio": {
+   "codec": "aac",
+   "channels": 2,
+   "sampleRate": 48000,
+   "decodable": true,
+   "bitrate": 128133
+  }
+ }
+}

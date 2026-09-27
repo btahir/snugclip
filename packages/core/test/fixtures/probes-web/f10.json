@@ -1,0 +1,24 @@
+{
+ "fixture": "f10",
+ "file": "f10-noaudio-720p30-10s.mp4",
+ "probe": {
+  "container": "mp4",
+  "sizeBytes": 3876697,
+  "durationSec": 10,
+  "video": {
+   "codec": "h264",
+   "decodable": true,
+   "codedWidth": 1280,
+   "codedHeight": 720,
+   "displayWidth": 1280,
+   "displayHeight": 720,
+   "rotation": 0,
+   "fps": 30,
+   "hdr": false,
+   "frameCount": 300,
+   "bitrate": 3098049,
+   "bitDepth": 8
+  },
+  "audio": null
+ }
+}

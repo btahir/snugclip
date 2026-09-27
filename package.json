@@ -22,7 +22,13 @@
     "gen:schema": "pnpm --filter @snugclip/core build && node scripts/gen-schema.mjs",
     "snugclip-mcp": "node packages/mcp/bin/snugclip-mcp.js",
     "lint": "oxlint -c .oxlintrc.json --deny-warnings packages scripts",
-    "test:browser:engine": "../research/heavy.sh node packages/engine-web/browser-check/run.mjs"
+    "test:browser:engine": "../research/heavy.sh node packages/engine-web/browser-check/run.mjs",
+    "build:web": "../research/heavy.sh pnpm --filter @snugclip/web build",
+    "test:matrix:web": "pnpm build && ../research/heavy.sh node scripts/verify/web-matrix/run.mjs",
+    "test:consistency": "vitest run --project core consistency && node scripts/verify/consistency.mjs",
+    "bench": "bash scripts/verify/e2e.sh --project=chrome perf.spec.ts",
+    "lighthouse": "../research/heavy.sh bash scripts/verify/lighthouse.sh",
+    "verify": "bash scripts/verify.sh"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

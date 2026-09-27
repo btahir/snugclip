@@ -1,0 +1,30 @@
+{
+ "fixture": "f11",
+ "file": "f11-long-360p30-300s.mp4",
+ "probe": {
+  "container": "mp4",
+  "sizeBytes": 13394813,
+  "durationSec": 300,
+  "video": {
+   "codec": "h264",
+   "decodable": true,
+   "codedWidth": 640,
+   "codedHeight": 360,
+   "displayWidth": 640,
+   "displayHeight": 360,
+   "rotation": 0,
+   "fps": 30,
+   "hdr": false,
+   "frameCount": 9000,
+   "bitrate": 300178,
+   "bitDepth": 8
+  },
+  "audio": {
+   "codec": "aac",
+   "channels": 1,
+   "sampleRate": 48000,
+   "decodable": true,
+   "bitrate": 48320
+  }
+ }
+}

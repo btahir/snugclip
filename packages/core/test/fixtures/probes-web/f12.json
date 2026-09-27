@@ -1,0 +1,30 @@
+{
+ "fixture": "f12",
+ "file": "f12-tiny-360p-5s.mp4",
+ "probe": {
+  "container": "mp4",
+  "sizeBytes": 368670,
+  "durationSec": 5,
+  "video": {
+   "codec": "h264",
+   "decodable": true,
+   "codedWidth": 640,
+   "codedHeight": 360,
+   "displayWidth": 640,
+   "displayHeight": 360,
+   "rotation": 0,
+   "fps": 30,
+   "hdr": false,
+   "frameCount": 150,
+   "bitrate": 514411,
+   "bitDepth": 8
+  },
+  "audio": {
+   "codec": "aac",
+   "channels": 2,
+   "sampleRate": 48000,
+   "decodable": true,
+   "bitrate": 64369
+  }
+ }
+}

@@ -39,7 +39,11 @@ function readRgba(wc: WrappedCanvas): LumaFrame {
   return { width: img.width, height: img.height, data: new Uint8ClampedArray(img.data) };
 }
 
-/** Decodes the frame at each time (last frame starting at or before t; the first frame for t before it). */
+/**
+ * Decodes the frame nearest to each time (like the ffmpeg engine, which picks frame round(t·fps)):
+ * the query is moved half a frame later, since the sink returns the last frame starting at or
+ * before the query. Nearest matching keeps SSIM honest after frame-rate drops (V2).
+ */
 export async function decodeFrames(src: Blob, timesSec: readonly number[], evalShortSide: number, signal: AbortSignalLike): Promise<LumaFrame[]> {
   throwIfAborted(signal);
   if (timesSec.length === 0) return [];
@@ -53,7 +57,9 @@ export async function decodeFrames(src: Blob, timesSec: readonly number[], evalS
     const sink = new CanvasSink(track, { width, height, fit: 'fill' });
     // Times before the first frame (t = 0 on a file whose first frame is at 0.033 s) get the first frame.
     const first = await track.getFirstTimestamp();
-    const order = sortedTimes(timesSec).map((o) => ({ ...o, t: Math.max(o.t, first) }));
+    const stats = await track.computePacketStats(120).catch(() => null);
+    const half = stats && stats.averagePacketRate > 0 ? 0.5 / stats.averagePacketRate : 0;
+    const order = sortedTimes(timesSec).map((o) => ({ ...o, t: Math.max(o.t + half, first) }));
     const out: Array<LumaFrame | undefined> = Array.from({ length: timesSec.length });
     let i = 0;
     for await (const wc of sink.canvasesAtTimestamps(order.map((o) => o.t))) {

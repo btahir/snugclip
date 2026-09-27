@@ -42,14 +42,14 @@ export function videoQuality(bitrate: number): Quality {
 }
 
 /** Conversion path video options: exact size, fps and bitrate; rotation baked into the pixels. */
-export function buildVideoOptions(plan: EncodePlan<unknown>, process?: VideoProcess): ConversionVideoOptions {
+export function buildVideoOptions(plan: EncodePlan<unknown>, process?: VideoProcess, opts: { ownFrameRate?: boolean } = {}): ConversionVideoOptions {
   const v = plan.video;
   const o: ConversionVideoOptions = {
     codec: toMediabunnyVideoCodec(v.codec),
     width: v.width,
     height: v.height,
     fit: 'fill',
-    frameRate: v.fps,
+    ...(opts.ownFrameRate ? {} : { frameRate: v.fps }),
     quality: videoQuality(v.bitrate),
     keyFrameInterval: v.keyframeIntervalSec,
     forceTranscode: true,
@@ -84,7 +84,7 @@ export function buildAudioOptions(audio: EncodePlan<unknown>['audio']): Conversi
 export function buildVideoEncodingConfig(
   plan: EncodePlan<unknown>,
   latency: 'quality' | 'realtime',
-  extra: { process?: VideoProcess; onEncodedPacket?: VideoEncodingConfig['onEncodedPacket'] } = {},
+  extra: { process?: VideoProcess; onEncodedPacket?: VideoEncodingConfig['onEncodedPacket']; ownFrameRate?: boolean } = {},
 ): VideoEncodingConfig {
   const v = plan.video;
   const cfg: VideoEncodingConfig = {
@@ -94,7 +94,7 @@ export function buildVideoEncodingConfig(
     latencyMode: latency,
     hardwareAcceleration: 'no-preference',
     sizeChangeBehavior: 'passThrough',
-    transform: { width: v.width, height: v.height, fit: 'fill', frameRate: v.fps, force: true },
+    transform: { width: v.width, height: v.height, fit: 'fill', ...(extra.ownFrameRate ? {} : { frameRate: v.fps }), force: true },
   };
   if (extra.process) cfg.transform!.process = extra.process;
   if (extra.onEncodedPacket) cfg.onEncodedPacket = extra.onEncodedPacket;
@@ -176,4 +176,30 @@ export const PAUSE_STEP_SEC = 2;
 export function nextUntil(prevUntil: number, processedSec: number, lenSec: number, interrupted: boolean, step: number = PAUSE_STEP_SEC): number {
   const next = interrupted ? Math.max(prevUntil, processedSec + step) : Math.max(prevUntil + step, processedSec + step);
   return !(lenSec > 0) || next >= lenSec + step ? Infinity : next;
+}
+
+/** True when the output drops frames relative to a known source frame rate. */
+export function needsFrameRateConversion(outFps: number, srcFps: number | undefined): srcFps is number {
+  return srcFps !== undefined && Number.isFinite(srcFps) && srcFps > 0 && outFps < srcFps - 0.01;
+}
+
+/**
+ * Nearest-neighbour frame-rate conversion, like ffmpeg's fps filter: output frame k (at k/outFps)
+ * shows the source frame nearest to k/outFps. mediabunny's own `frameRate` keeps the *last* source
+ * frame in each output slot, which shifts content up to one output frame early and made web SSIM
+ * compare the wrong frames (V2). Feed source timestamps in presentation order (0-based, trim
+ * applied); returns the output slots this frame fills. A frame fills every not-yet-filled slot
+ * whose time is before its own time + half a source frame, so VFR gaps are filled by the next frame.
+ */
+export function frameSlotMapper(outFps: number, srcFps: number, endSec: number): (timestampSec: number) => number[] {
+  const half = 0.5 / srcFps;
+  let lastK = -1;
+  return (ts) => {
+    const limit = Math.min(ts + half, endSec);
+    const kMax = Math.ceil(limit * outFps - 1e-9) - 1;
+    const out: number[] = [];
+    for (let k = lastK + 1; k <= kMax; k++) out.push(k);
+    if (kMax > lastK) lastK = kMax;
+    return out;
+  };
 }

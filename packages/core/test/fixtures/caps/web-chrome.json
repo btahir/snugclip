@@ -1,0 +1,62 @@
+{
+ "note": "Headless Chrome 154 on macOS (detectWebSupport: h264/hevc/av1/vp9 at 720/1080/2160, aac+opus), native AAC + WASM AAC available; recorded 2026-09-27 from engine-web buildCapabilities",
+ "aacRouting": {
+  "native": true,
+  "wasmAvailable": true,
+  "nativeFailed": false
+ },
+ "encodeTiers": {
+  "h264": [
+   720,
+   1080,
+   2160
+  ],
+  "hevc": [
+   720,
+   1080,
+   2160
+  ],
+  "av1": [
+   720,
+   1080,
+   2160
+  ],
+  "vp9": [
+   720,
+   1080,
+   2160
+  ]
+ },
+ "id": "web",
+ "version": "0.1.0 (mediabunny 1.60.0)",
+ "encoderName": {
+  "h264": "WebCodecs H.264",
+  "hevc": "WebCodecs HEVC",
+  "av1": "WebCodecs AV1",
+  "vp9": "WebCodecs VP9"
+ },
+ "videoCodecs": [
+  "h264",
+  "hevc",
+  "av1",
+  "vp9"
+ ],
+ "audioCodecs": [
+  "aac",
+  "opus"
+ ],
+ "containers": [
+  "mp4",
+  "webm"
+ ],
+ "twoPass": false,
+ "initialMargin": 0.04,
+ "rateCalibration": "always",
+ "audioCopyWithTrim": false,
+ "maxEncodeShortSide": {
+  "h264": 2160,
+  "hevc": 2160,
+  "av1": 2160,
+  "vp9": 2160
+ }
+}
