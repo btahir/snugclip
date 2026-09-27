@@ -1,0 +1,25 @@
+{
+  "name": "snugclip-monorepo",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "packageManager": "pnpm@11.1.1",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "build": "pnpm -r --filter \"./packages/*\" run build",
+    "typecheck": "pnpm -r --filter \"./packages/*\" run typecheck",
+    "test": "pnpm build && vitest run",
+    "test:unit": "vitest run --project core --project engine-web",
+    "test:matrix": "../research/heavy.sh node scripts/fit-matrix.mjs",
+    "fixtures": "../research/heavy.sh node scripts/make-fixtures.mjs",
+    "licenses:check": "node scripts/check-licenses.mjs",
+    "snugclip": "node packages/cli/bin/snugclip.js"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.2"
+  }
+}

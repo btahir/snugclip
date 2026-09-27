@@ -1,0 +1,28 @@
+{
+  "name": "@snugclip/core",
+  "version": "0.1.0",
+  "description": "Snugclip's headless core: presets, planner, fit loop, verdicts, job files. Pure TypeScript, no DOM or Node APIs.",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.build.json --noEmit && tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0"
+  }
+}
