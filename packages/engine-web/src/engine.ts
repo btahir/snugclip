@@ -28,6 +28,11 @@ export interface WebEngineOptions {
    * 96 kbps are avoided by the planner.
    */
   aacEncoderUrl?: string;
+  /**
+   * Largest output kept in memory before streaming to OPFS (default 512 MB). Pass ~192 MB on
+   * phones: iOS tabs get ~1–1.5 GB and fast-start MP4 copies the buffer once more.
+   */
+  maxBufferBytes?: number;
   /** Awaited between encode chunks; see PauseGate. */
   pause?: PauseGate;
   /** Run the Safari stall probe (PLAN §8.3) at capabilities() time. Default true. */
@@ -47,6 +52,15 @@ export interface WebEngine extends Engine<Blob, Blob> {
   readonly lastAudioEncoder: 'native' | 'wasm' | null;
 }
 
+/** Per-check timeout for capability probes (compat A5). */
+export const CAPABILITY_PROBE_TIMEOUT_MS = 5000;
+
+/** Resolves to `fallback` if `p` hasn't settled within `ms`. */
+export function withTimeout<T>(p: Promise<T>, ms: number, fallback: T): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  return Promise.race([p, new Promise<T>((resolve) => (timer = setTimeout(() => resolve(fallback), ms)))]).finally(() => clearTimeout(timer));
+}
+
 interface EngineState {
   latency: LatencyMode;
   aacPolyfilled: boolean;
@@ -57,28 +71,27 @@ interface EngineState {
 async function probeCapabilityInputs(opts: WebEngineOptions, state: EngineState): Promise<CapabilityInputs> {
   const video = emptyEncodeTable();
   if (typeof VideoEncoder !== 'undefined') {
+    // Firefox's canEncodeVideo does a real test encode whose flush() can hang (mediabunny #222), so
+    // every check has a timeout, and tiers go 720 → 1080 → 2160 per codec, stopping at a failure.
     await Promise.all(
-      VIDEO_CODEC_IDS.flatMap((codec) =>
-        PROBE_TIERS.map(async ({ tier, width, height }) => {
-          try {
-            video[codec][tier] = await canEncodeVideo(toMediabunnyVideoCodec(codec), {
-              width,
-              height,
-              frameRate: 30,
-              quality: new Quality({ bitrate: probeBitrate(width, height) }),
-            });
-          } catch {
-            video[codec][tier] = false;
-          }
-        }),
-      ),
+      VIDEO_CODEC_IDS.map(async (codec) => {
+        for (const { tier, width, height } of PROBE_TIERS) {
+          const ok = await withTimeout(
+            canEncodeVideo(toMediabunnyVideoCodec(codec), { width, height, frameRate: 30, quality: new Quality({ bitrate: probeBitrate(width, height) }) }).catch(() => false),
+            CAPABILITY_PROBE_TIMEOUT_MS,
+            false,
+          );
+          video[codec][tier] = ok;
+          if (!ok) break;
+        }
+      }),
     );
   }
   // Audio: isConfigSupported only (mediabunny's canEncodeAudio). No AudioEncoder is ever created
   // here: low-bitrate native AAC encodes can abort the GPU process (core TUNING.nativeAacSafe).
   // Checked before any WASM registration so the answer reflects the browser alone.
   const audioOpts = { numberOfChannels: 2, sampleRate: 48000, quality: new Quality({ bitrate: 128_000 }) };
-  const check = (c: 'aac' | 'opus') => canEncodeAudio(c, audioOpts).catch(() => false);
+  const check = (c: 'aac' | 'opus') => withTimeout(canEncodeAudio(c, audioOpts).catch(() => false), CAPABILITY_PROBE_TIMEOUT_MS, false);
   const [nativeAac, opus] = await Promise.all([check('aac'), check('opus')]);
   state.aac.native = nativeAac;
   state.aac.wasmAvailable = !!opts.aacEncoderUrl;
@@ -175,6 +188,8 @@ export function createWebEngine(opts: WebEngineOptions = {}): WebEngine {
         const r = await encodeBlob(plan, o, {
           probedLatency: state.latency,
           audioEncoder: path,
+          ...(opts.onWarning ? { onWarning: opts.onWarning } : {}),
+          ...(opts.maxBufferBytes ? { maxBufferBytes: opts.maxBufferBytes } : {}),
           ...(sourceFps(await probeCached(plan.input)) !== undefined ? { sourceFps: sourceFps(await probeCached(plan.input))! } : {}),
           ...(opts.pause ? { pause: opts.pause } : {}),
           onOpfsOutput: (blob, sink) => opfsOutputs.set(blob, sink),

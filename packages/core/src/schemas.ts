@@ -126,7 +126,7 @@ export const QualitySchema = z.object({
   algorithm: z.string().optional(),
 });
 
-export const ErrorSchema = z.object({ code: z.string(), message: z.string(), hint: z.string().optional() });
+export const ErrorSchema = z.object({ code: z.string(), message: z.string(), hint: z.string().optional(), track: z.enum(['audio', 'video']).optional() });
 
 export const ReportSchema = z.object({
   snugclip: z.literal('report'),

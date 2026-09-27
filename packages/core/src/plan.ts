@@ -248,6 +248,26 @@ function minAudioBytes(codec: AudioCodecId, durationSec: number, srcRate: number
   return encodeAudio(codec, TUNING.audioLadder[codec].at(-1)!, 1, srcRate, durationSec, caps).bytes;
 }
 
+/**
+ * Audio the engine can't decode (Safari < 26 has no AudioDecoder; Firefox on Linux lacks AAC
+ * without system ffmpeg): copy it unchanged when the container takes it, there is no trim the
+ * engine can't copy through, and it uses at most a quarter of the budget. Otherwise refuse before
+ * encoding, naming the audio, so the app can offer "Try without sound". Null = audio is decodable.
+ */
+function undecodableAudio(probe: Probe, opts: Options, codec: AudioCodecId, D: number, budget: number, caps: EngineCapabilities, trim: TrimRange | undefined): PlanAudio | null {
+  const a = probe.audio;
+  if (!a || opts.mute || a.decodable) return null;
+  const compatible = codec === 'aac' ? a.codec === 'aac' : a.codec === 'opus';
+  const bytes = a.bitrate ? Math.ceil((a.bitrate * D) / 8) : Number.POSITIVE_INFINITY;
+  if (compatible && a.channels <= 2 && (!trim || caps.audioCopyWithTrim) && bytes <= 0.25 * budget) {
+    return { mode: 'copy', codec, bitrate: Math.round(a.bitrate!), channels: a.channels <= 1 ? 1 : 2, sampleRate: a.sampleRate, bytes };
+  }
+  throw new SnugclipError('E_UNSUPPORTED', `This browser can't decode this file's audio (${a.codec}).`, {
+    hint: 'Compress it without sound (mute), or use Chrome or the CLI.',
+    details: { track: 'audio' },
+  });
+}
+
 /** Resolves and validates a trim against the source. Undefined when it covers the whole clip. */
 export function resolveTrim(trim: TrimRange | undefined, durationSec: number): TrimRange | undefined {
   if (!trim) return undefined;
@@ -393,7 +413,9 @@ export function plan(probe: Probe, target: Target, options: Partial<Options>, ca
   const hasAudio = !!probe.audio && !opts.mute;
   const audioSr = hasAudio ? audioSampleRate(audioCodec, probe.audio!.sampleRate) : 0;
   const O0 = overheadBytes(container, D, entries[0]!.fps, hasAudio ? { codec: audioCodec, sampleRate: audioSr } : null);
-  let audio = chooseAudio(probe, opts, audioCodec, D, ((Sd - O0) * 8) / D / 1000, caps, trim);
+  const forced = undecodableAudio(probe, opts, audioCodec, D, Sd, caps, trim);
+  let audio = forced ?? chooseAudio(probe, opts, audioCodec, D, ((Sd - O0) * 8) / D / 1000, caps, trim);
+  if (forced) warnings.push({ code: 'audio-copied', message: "This browser can't decode the audio, so it is copied unchanged." });
 
   const { good, floor, ceiling } = bppThresholds(codec);
   const budget = (a: PlanAudio): Budgeted => ({
@@ -417,7 +439,7 @@ export function plan(probe: Probe, target: Target, options: Partial<Options>, ca
   let b = budget(audio);
   let idx = select(b);
   // Give the picture the audio's share before refusing (only ever lowers audio to the minimum).
-  if (b.rungs[idx]!.bpp < floor && audio.mode !== 'none') {
+  if (b.rungs[idx]!.bpp < floor && audio.mode !== 'none' && !forced) {
     const lean = encodeAudio(audioCodec, TUNING.audioLadder[audioCodec].at(-1)!, probe.audio!.channels, probe.audio!.sampleRate, D, caps);
     if (lean.bytes < audio.bytes) {
       audio = lean;

@@ -678,7 +678,8 @@ export async function runFit<I, O>(engine: Engine<I, O>, input: I, target: Targe
     }
     if (isSnugclipError(e)) {
       report.status = e.code === 'E_UNSUPPORTED' || e.code === 'E_UNSUPPORTED_BROWSER' || e.code === 'E_UNSUPPORTED_ENCODER' ? 'unsupported' : 'error';
-      report.error = { code: e.code, message: e.message, ...(e.hint ? { hint: e.hint } : {}) };
+      const track = e.details.track === 'audio' || e.details.track === 'video' ? e.details.track : undefined;
+      report.error = { code: e.code, message: e.message, ...(e.hint ? { hint: e.hint } : {}), ...(track ? { track } : {}) };
       return finish();
     }
     report.status = 'error';

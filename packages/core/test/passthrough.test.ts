@@ -37,3 +37,22 @@ describe('pass-through', () => {
     expect(wa.warnings.map((w) => w.code)).toEqual(['platform-will-downscale']);
   });
 });
+
+describe('audio the engine cannot decode (compat A3)', () => {
+  const T = { bytes: 10 * MB, label: '10 MB' };
+  const undecodable = (codec: string, bitrate = 128_000) => makeProbe({ durationSec: 30, audio: { codec, channels: 2, sampleRate: 48000, bitrate, decodable: false } });
+  it('copies compatible audio unchanged with a warning', () => {
+    const p = plan(undecodable('aac'), T, {}, caps);
+    expect(p.audio).toMatchObject({ mode: 'copy', bitrate: 128_000 });
+    expect(p.warnings.map((w) => w.code)).toContain('audio-copied');
+  });
+  it('refuses clearly (E_UNSUPPORTED naming the audio) when it cannot copy', () => {
+    for (const probe of [undecodable('mp3'), undecodable('aac', 2_000_000)]) {
+      expect(() => plan(probe, T, {}, caps)).toThrow(expect.objectContaining({ code: 'E_UNSUPPORTED', message: expect.stringContaining('audio'), details: { track: 'audio' } }));
+    }
+    expect(() => plan(undecodable('aac'), T, { trim: { startSec: 1, endSec: 20 } }, testCaps({ audioCopyWithTrim: false }))).toThrow(/audio/);
+  });
+  it('mute sidesteps it', () => {
+    expect(plan(undecodable('mp3'), T, { mute: true }, caps).audio.mode).toBe('none');
+  });
+});

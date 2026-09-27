@@ -281,7 +281,8 @@ export interface Report {
   minimumBytes?: Bytes;
   minimumSource?: 'planned' | 'measured';
   warnings: Warning[];
-  error?: { code: string; message: string; hint?: string };
+  /** `track` names the failing track when known ('audio' → the app can offer "Try without sound"). */
+  error?: { code: string; message: string; hint?: string; track?: 'audio' | 'video' };
   engine: { id: 'web' | 'ffmpeg'; version: string; encoder: string };
   elapsedMs: number;
 }

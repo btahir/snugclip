@@ -20,6 +20,7 @@ import {
 import { EncodedAudioPacketSource, EncodedVideoPacketSource } from 'mediabunny';
 import type { ConversionVideoOptions, EncodedPacket, InputTrack, InputVideoTrack, OutputFormat, Target } from 'mediabunny';
 import { planAacRetime } from './aac-timing.js';
+import { repairAvcC } from './avcc.js';
 import { encoderLabel, mimeFor } from './codec-strings.js';
 import {
   assessDiscarded,
@@ -48,6 +49,10 @@ import type { PauseGate } from './pause.js';
 export interface EncodeContext {
   /** Result of the Safari latency probe at capability time. */
   probedLatency: LatencyMode;
+  /** In-memory output ceiling (createWebEngine({ maxBufferBytes })). */
+  maxBufferBytes?: number;
+  /** Non-fatal notes for the app (e.g. a repaired decoder config). */
+  onWarning?: (w: { code: string; message: string }) => void;
   /** Which AAC encoder this encode uses (engine.ts routing); 'native' triggers the timing fix. */
   audioEncoder?: 'native' | 'wasm' | null;
   /** Source average frame rate (from the probe), for nearest-neighbour frame-rate conversion. */
@@ -70,9 +75,12 @@ function hdrToSdrProcess(width: number, height: number): VideoProcess {
   return (sample) => {
     if (!canvas || !ctx) {
       canvas = new OffscreenCanvas(width, height);
-      ctx = canvas.getContext('2d', { colorSpace: 'srgb' });
+      // alpha: true — Firefox glitches on VideoFrames made from alpha-less canvases (bug 1988770).
+      ctx = canvas.getContext('2d', { colorSpace: 'srgb', alpha: true });
       if (!ctx) throw new SnugclipError('E_ENCODE', 'No 2D canvas for HDR to SDR conversion.');
     }
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, width, height);
     sample.drawWithFit(ctx, { fit: 'fill' });
     return new VideoSample(canvas, { timestamp: sample.timestamp, duration: sample.duration });
   };
@@ -108,13 +116,11 @@ interface Sink {
   opfs?: OpfsSink;
 }
 
-async function makeSink(plan: EncodePlan<Blob>, kind: TargetKind, estimate: number): Promise<Sink> {
+/** Outputs up to this size may fall back to memory when OPFS can't open (private windows). */
+export const MEMORY_FALLBACK_MAX_BYTES = 1_500_000_000;
+
+function bufferSink(plan: EncodePlan<Blob>): Sink {
   const mime = mimeFor(plan.container);
-  if (kind === 'opfs') {
-    await ensureQuota(Math.ceil(estimate * QUOTA_HEADROOM));
-    const opfs = await createOpfsSink(plan.container);
-    return { target: opfs.target, finish: () => opfs.finish(), abort: () => opfs.remove(), opfs };
-  }
   const target = new BufferTarget();
   return {
     target,
@@ -127,38 +133,118 @@ async function makeSink(plan: EncodePlan<Blob>, kind: TargetKind, estimate: numb
 }
 
 /**
- * Re-muxes an MP4 whose audio came from the native AAC encoder: hides the encoder priming behind an
- * edit list and drops audio past the video end (see aac-timing.ts). No re-encode. Returns null when
- * nothing needs changing.
+ * The output sink. OPFS can throw on open (SecurityError in Firefox and Safari private windows,
+ * compat A2): then outputs up to 1.5 GB go to memory, larger ones fail with E_QUOTA. OPFS files
+ * are checked after writing (Safari 26.5.2 zeroed the first chunk, mediabunny #459).
  */
-async function retimeNativeAac(blob: Blob, plan: EncodePlan<Blob>, kind: TargetKind, estimate: number, signal: AbortSignalLike): Promise<{ blob: Blob; sink: Sink } | null> {
+async function makeSink(plan: EncodePlan<Blob>, kind: TargetKind, estimate: number): Promise<Sink> {
+  if (kind !== 'opfs') return bufferSink(plan);
+  await ensureQuota(Math.ceil(estimate * QUOTA_HEADROOM));
+  let opfs: OpfsSink;
+  try {
+    opfs = await createOpfsSink(plan.container);
+  } catch (e) {
+    if (estimate * 1.3 <= MEMORY_FALLBACK_MAX_BYTES) return bufferSink(plan);
+    throw new SnugclipError('E_QUOTA', "This output is too large to keep in memory, and this browser won't allow file storage here.", {
+      hint: 'Private windows block storage: use a normal window, or trim the clip or pick a smaller limit.',
+      cause: e,
+    });
+  }
+  return {
+    target: opfs.target,
+    finish: async () => {
+      const blob = await opfs.finish();
+      await checkHeader(blob, plan.container);
+      return blob;
+    },
+    abort: () => opfs.remove(),
+    opfs,
+  };
+}
+
+/** A written file must start with an MP4 box ('ftyp' at 4) or the EBML magic. */
+export async function checkHeader(blob: Blob, container: EncodePlan<Blob>['container']): Promise<void> {
+  const head = new Uint8Array(await blob.slice(0, 8).arrayBuffer());
+  if (!headerLooksValid(head, container)) {
+    throw new SnugclipError('E_ENCODE', 'The browser corrupted the start of the output file while saving it.', { hint: 'Try again; if it repeats, pick a smaller limit so the file stays in memory.' });
+  }
+}
+
+export function headerLooksValid(head: Uint8Array, container: 'mp4' | 'webm'): boolean {
+  if (container === 'webm') return head[0] === 0x1a && head[1] === 0x45 && head[2] === 0xdf && head[3] === 0xa3;
+  return head.length >= 8 && String.fromCharCode(head[4]!, head[5]!, head[6]!, head[7]!) === 'ftyp';
+}
+
+/**
+ * Post-processes a finished MP4 by re-muxing (never re-encoding) when needed:
+ * - a malformed H.264 avcC (Firefox, Bugzilla 2031056) is rebuilt (see avcc.ts);
+ * - native-AAC priming is hidden behind an edit list and audio past the video end is dropped
+ *   (see aac-timing.ts).
+ * Returns null when the file is fine as it is.
+ */
+async function postProcessMp4(
+  blob: Blob,
+  plan: EncodePlan<Blob>,
+  kind: TargetKind,
+  estimate: number,
+  signal: AbortSignalLike,
+  opts: { retimeAac: boolean; onWarning?: (w: { code: string; message: string }) => void },
+): Promise<{ blob: Blob; sink: Sink } | null> {
   const input = new Input({ source: new BlobSource(blob), formats: ALL_FORMATS });
   let sink: Sink | null = null;
   try {
     const [vt, at] = await Promise.all([input.getPrimaryVideoTrack(), input.getPrimaryAudioTrack()]);
-    if (!vt || !at || (await at.getCodec()) !== 'aac') return null;
-    let videoEnd = 0;
-    for await (const p of new EncodedPacketSink(vt).packets(undefined, undefined, { metadataOnly: true })) videoEnd = Math.max(videoEnd, p.timestamp + p.duration);
-    const audio: EncodedPacket[] = [];
-    for await (const p of new EncodedPacketSink(at).packets()) audio.push(p);
-    const r = planAacRetime(audio, at.sampleRate, videoEnd);
-    if (!r.changed) return null;
+    if (!vt) return null;
+    const videoCodec = await vt.getCodec();
+    if (!videoCodec) return null;
+    let vcfg = await vt.getDecoderConfig();
+    // H.264 decoder config check (behaviour-based: every output, every browser).
+    let avccFixed = false;
+    if (videoCodec === 'avc' && vcfg?.description) {
+      const d = vcfg.description;
+      const desc = ArrayBuffer.isView(d) ? new Uint8Array(d.buffer, d.byteOffset, d.byteLength) : new Uint8Array(d as ArrayBuffer);
+      const firstKey = await new EncodedPacketSink(vt).getFirstPacket().catch(() => null);
+      const fix = repairAvcC(desc, firstKey?.data);
+      if (fix) {
+        vcfg = { ...vcfg, codec: fix.codec, description: fix.description };
+        avccFixed = true;
+        opts.onWarning?.({ code: 'avcc-repaired', message: `Repaired this browser's H.264 decoder config (${fix.problems.join('; ')}).` });
+      }
+    }
+    // Native AAC re-time.
+    let audio: EncodedPacket[] = [];
+    let retime = { shiftSec: 0, keep: 0, changed: false };
+    const audioCodec = at ? await at.getCodec() : null;
+    const readAudio = async () => {
+      if (at && !audio.length) for await (const p of new EncodedPacketSink(at).packets()) audio.push(p);
+    };
+    if (at && audioCodec) {
+      if (opts.retimeAac && audioCodec === 'aac') {
+        await readAudio();
+        let videoEnd = 0;
+        for await (const p of new EncodedPacketSink(vt).packets(undefined, undefined, { metadataOnly: true })) videoEnd = Math.max(videoEnd, p.timestamp + p.duration);
+        retime = planAacRetime(audio, at.sampleRate, videoEnd);
+      }
+    }
+    if (!avccFixed && !retime.changed) return null;
+    await readAudio();
     throwIfAborted(signal);
     sink = await makeSink(plan, kind, estimate);
     const output = new Output({ format: makeFormat(plan, kind), target: sink.target });
-    const videoCodec = await vt.getCodec();
-    if (!videoCodec) return null;
     const vs = new EncodedVideoPacketSource(videoCodec);
-    const as = new EncodedAudioPacketSource('aac');
     output.addVideoTrack(vs, { rotation: await vt.getRotation() });
-    output.addAudioTrack(as);
+    let as: EncodedAudioPacketSource | null = null;
+    if (at && audioCodec) {
+      as = new EncodedAudioPacketSource(audioCodec);
+      output.addAudioTrack(as);
+    }
     await output.start();
-    const [vcfg, acfg] = await Promise.all([vt.getDecoderConfig(), at.getDecoderConfig()]);
-    const shifted = audio.slice(0, r.keep).map((p) => p.clone({ timestamp: p.timestamp - r.shiftSec }));
+    const acfg = at ? await at.getDecoderConfig() : null;
+    if (retime.changed) audio = audio.slice(0, retime.keep).map((p) => p.clone({ timestamp: p.timestamp - retime.shiftSec }));
     let ai = 0;
     const addAudioUpTo = async (t: number) => {
-      while (ai < shifted.length && shifted[ai]!.timestamp <= t) {
-        await as.add(shifted[ai]!, ai === 0 && acfg ? { decoderConfig: acfg } : undefined);
+      while (as && ai < audio.length && audio[ai]!.timestamp <= t) {
+        await as.add(audio[ai]!, ai === 0 && acfg ? { decoderConfig: acfg } : undefined);
         ai++;
       }
     };
@@ -397,7 +483,7 @@ export async function encodeBlob(
     const range = resolveRange(plan.trim, await input.computeDuration());
     if (!(range.len > 0)) throw new SnugclipError('E_TRIM', 'Nothing to encode in the chosen range.');
     const estimate = estimateOutputBytes(plan, range.len);
-    const kind = chooseTargetKind(estimate, { opfsAvailable: opfsAvailable() });
+    const kind = chooseTargetKind(estimate, { opfsAvailable: opfsAvailable(), ...(ctx.maxBufferBytes ? { maxBufferBytes: ctx.maxBufferBytes } : {}) });
     sink = await makeSink(plan, kind, estimate);
     output = new Output({ format: makeFormat(plan, kind), target: sink.target });
     const latency = effectiveLatency(plan.video.latency, ctx.probedLatency);
@@ -405,8 +491,8 @@ export async function encodeBlob(
     else await runConversion(input, output, plan, range, signal, ctx, opts.onProgress);
     throwIfAborted(signal);
     let blob = await sink.finish();
-    if (ctx.audioEncoder === 'native' && plan.container === 'mp4') {
-      const fixed = await retimeNativeAac(blob, plan, kind, estimate, signal);
+    if (plan.container === 'mp4') {
+      const fixed = await postProcessMp4(blob, plan, kind, estimate, signal, { retimeAac: ctx.audioEncoder === 'native', ...(ctx.onWarning ? { onWarning: ctx.onWarning } : {}) });
       if (fixed) {
         await sink.abort().catch(() => {});
         sink = fixed.sink;

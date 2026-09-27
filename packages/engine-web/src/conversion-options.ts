@@ -148,18 +148,18 @@ export function assessDiscarded(
     if (d.reason === 'discarded_by_user') continue;
     if (d.type === 'video' && expect.video) {
       if (d.reason === 'no_encodable_target_codec') {
-        return new SnugclipError('E_UNSUPPORTED_ENCODER', "This browser can't encode video in the chosen format.", { hint: 'Try the Compatible (H.264) setting or another browser.' });
+        return new SnugclipError('E_UNSUPPORTED_ENCODER', "This browser can't encode video in the chosen format.", { hint: 'Try the Compatible (H.264) setting or another browser.', details: { track: 'video', reason: d.reason } });
       }
       return new SnugclipError('E_UNSUPPORTED', "This browser can't decode this video.", {
         hint: 'Snugclip handles MP4, MOV, M4V, WebM and MKV with H.264, HEVC, VP9 or AV1. The CLI (ffmpeg) can do this one.',
-        details: { reason: d.reason },
+        details: { track: 'video', reason: d.reason },
       });
     }
     if (d.type === 'audio' && expect.audio) {
       if (d.reason === 'no_encodable_target_codec') {
-        return new SnugclipError('E_UNSUPPORTED_ENCODER', "This browser can't encode the audio.", { hint: 'Mute the clip, or use Chrome or Edge.' });
+        return new SnugclipError('E_UNSUPPORTED_ENCODER', "This browser can't encode the audio.", { hint: 'Mute the clip, or use Chrome or Edge.', details: { track: 'audio', reason: d.reason } });
       }
-      return new SnugclipError('E_UNSUPPORTED', "This browser can't decode this file's audio.", { hint: 'Mute the clip to compress the picture only.', details: { reason: d.reason } });
+      return new SnugclipError('E_UNSUPPORTED', "This browser can't decode this file's audio.", { hint: 'Mute the clip to compress the picture only.', details: { track: 'audio', reason: d.reason } });
     }
   }
   return null;
