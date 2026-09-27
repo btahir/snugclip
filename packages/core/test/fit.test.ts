@@ -127,6 +127,12 @@ describe('fit loop', () => {
     expect(r.report.output!.video).toMatchObject({ width: 1920, height: 1080 });
     invariants(r);
   });
+  it('static content: keeps the sharper rung even when it is not bigger in bytes', async () => {
+    const r = await run({ contentCapBps: 100_000, splitBytes: true });
+    expect(r.report.status).toBe('fit');
+    expect(r.report.output!.video).toMatchObject({ width: 1920, height: 1080 });
+    invariants(r);
+  });
   it('calibrates one-pass engines (median ratio) and reports complexity', async () => {
     const r = await run({ ratio: 1.3 }, { caps: webCaps() });
     const cal = r.report.attempts.filter((a) => a.purpose === 'calibration');

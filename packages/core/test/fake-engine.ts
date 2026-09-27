@@ -16,6 +16,8 @@ export interface RateModel {
   abortOn?: { call: number; controller: AbortController };
   /** Throw on this encode call. */
   failOn?: { call: number; error: Error };
+  /** Static content: the encoder never spends more than this many bits/s at any size. */
+  contentCapBps?: number;
   /** Simple content: the encoder never spends more than contentBpp·w·h·fps. */
   contentBpp?: number;
   /** Report videoBytes/audioBytes like the ffmpeg engine does. */
@@ -112,6 +114,7 @@ export class FakeEngine implements Engine<string, FakeOut> {
     const floor = (this.model.floorBpp ?? 0) * v.width * v.height * v.fps;
     let actual = Math.max(floor, v.bitrate * (this.model.ratio ?? 1) * drift);
     if (this.model.contentBpp !== undefined) actual = Math.min(actual, this.model.contentBpp * v.width * v.height * v.fps);
+    if (this.model.contentCapBps !== undefined) actual = Math.min(actual, this.model.contentCapBps);
     const videoBytes = Math.round((actual * D) / 8);
     const audioBytes = plan.audio.mode === 'none' ? 0 : Math.round(((plan.audio.bitrate ?? 0) * D) / 8);
     const oh = overheadBytes(plan.container, D, v.fps, plan.audio.mode === 'none' ? null : { codec: plan.audio.codec!, sampleRate: plan.audio.sampleRate! });

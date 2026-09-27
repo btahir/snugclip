@@ -54,7 +54,7 @@ export async function decodeFrames(src: Blob, timesSec: readonly number[], evalS
     // Times before the first frame (t = 0 on a file whose first frame is at 0.033 s) get the first frame.
     const first = await track.getFirstTimestamp();
     const order = sortedTimes(timesSec).map((o) => ({ ...o, t: Math.max(o.t, first) }));
-    const out: Array<LumaFrame | undefined> = new Array(timesSec.length);
+    const out: Array<LumaFrame | undefined> = Array.from({ length: timesSec.length });
     let i = 0;
     for await (const wc of sink.canvasesAtTimestamps(order.map((o) => o.t))) {
       throwIfAborted(signal);

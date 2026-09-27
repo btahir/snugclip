@@ -41,7 +41,7 @@ export function createPauseController(): PauseController {
     pause() {
       if (paused) return;
       paused = true;
-      for (const l of [...listeners]) l();
+      for (const l of Array.from(listeners)) l(); // copy: listeners may unsubscribe while running
     },
     resume() {
       if (!paused) return;

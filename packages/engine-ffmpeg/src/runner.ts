@@ -124,7 +124,7 @@ function failedReport(input: string, target: Target, now: () => number, e: unkno
     snugclip: 'report',
     version: 1,
     createdAt: new Date(now()).toISOString(),
-    status: /^E_UNSUPPORTED/.test(err.code) ? 'unsupported' : 'error',
+    status: err.code.startsWith('E_UNSUPPORTED') ? 'unsupported' : 'error',
     fits: false,
     passThrough: false,
     input: { name: basename(input), path: input, bytes: existsSync(input) ? statSync(input).size : 0, probe: null },

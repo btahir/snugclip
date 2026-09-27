@@ -11,15 +11,21 @@
     "build": "pnpm -r --filter \"./packages/*\" run build",
     "typecheck": "pnpm -r --filter \"./packages/*\" run typecheck",
     "test": "pnpm build && vitest run",
-    "test:unit": "vitest run --project core --project engine-web",
-    "test:matrix": "../research/heavy.sh node scripts/fit-matrix.mjs",
+    "test:unit": "vitest run --project core --project engine-web --project engine-ffmpeg",
     "fixtures": "../research/heavy.sh bash scripts/make-fixtures.sh",
     "licenses:check": "node scripts/check-licenses.mjs",
     "snugclip": "node packages/cli/bin/snugclip.js",
-    "check:pure": "node scripts/check-pure.mjs"
+    "check:pure": "node scripts/check-pure.mjs",
+    "test:cli": "pnpm build && vitest run --project cli",
+    "test:mcp": "pnpm build && vitest run --project mcp",
+    "test:matrix:cli": "pnpm build && node scripts/fit-matrix.mjs",
+    "gen:schema": "pnpm --filter @snugclip/core build && node scripts/gen-schema.mjs",
+    "snugclip-mcp": "node packages/mcp/bin/snugclip-mcp.js",
+    "lint": "oxlint -c .oxlintrc.json --deny-warnings packages scripts"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
+    "oxlint": "^1.85.0",
     "typescript": "^7.0.2",
     "vitest": "^5.0.2"
   }

@@ -49,7 +49,7 @@ export interface FitState {
   history: { req: number; bv: number }[];
   fullAttempts: number;
   rescue: 'none' | 'pending' | 'done';
-  best: { index: number; bytes: number } | null;
+  best: { index: number; bytes: number; pixRate: number } | null;
   capped: boolean;
   /** Bytes that aren't video (container + audio); measured when the engine splits them. */
   nonVideoBytes: number;
@@ -289,7 +289,10 @@ export function applyResult(state: FitState, step: FitStep, outcome: FitOutcome)
   };
   s.attempts.push(attempt);
   s.minObservedBytes = s.minObservedBytes === null ? outcome.bytes : Math.min(s.minObservedBytes, outcome.bytes);
-  if (fits && (!s.best || outcome.bytes > s.best.bytes)) s.best = { index, bytes: outcome.bytes };
+  // Best fit: the sharpest rung first (a simple-content rung-up beats a lower rung at similar size),
+  // then the most bytes (closest to the target = best quality at that rung).
+  const pixRate = step.rung.width * step.rung.height * step.rung.fps;
+  if (fits && (!s.best || pixRate > s.best.pixRate || (pixRate === s.best.pixRate && outcome.bytes > s.best.bytes))) s.best = { index, bytes: outcome.bytes, pixRate };
   if (!fits) attempt.note = `over by ${outcome.bytes - T} bytes; discarded`;
 
   if (p.purpose === 'rescue') {
@@ -432,7 +435,7 @@ function childSignal(parent: AbortSignalLike): { signal: AbortSignalLike; abort:
     if (sig.aborted) return;
     sig.aborted = true;
     sig.reason = reason;
-    for (const l of [...listeners]) l();
+    for (const l of Array.from(listeners)) l(); // copy: listeners may unsubscribe while running
   };
   const onParent = () => abort(parent.reason);
   if (parent.aborted) abort(parent.reason);

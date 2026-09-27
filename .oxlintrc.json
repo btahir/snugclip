@@ -1,0 +1,56 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "categories": {
+    "correctness": "error"
+  },
+  "env": {
+    "es2024": true
+  },
+  "ignorePatterns": [
+    "**/dist/**",
+    "**/node_modules/**",
+    "fixtures/**",
+    "test-results/**",
+    "apps/**"
+  ],
+  "rules": {
+    "no-console": "off",
+    "no-unused-vars": "error"
+  },
+  "overrides": [
+    {
+      "files": [
+        "packages/core/src/**/*.ts"
+      ],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              "node:*",
+              "fs",
+              "path",
+              "os",
+              "child_process",
+              "mediabunny"
+            ]
+          }
+        ],
+        "no-restricted-globals": [
+          "error",
+          "window",
+          "document",
+          "navigator",
+          "process",
+          "Buffer",
+          "require",
+          "setTimeout",
+          "setInterval",
+          "fetch",
+          "localStorage",
+          "self"
+        ]
+      }
+    }
+  ]
+}
