@@ -52,7 +52,6 @@ A 45.8 MB, 24-second 1080p clip, compressed in the browser for Discord's 20 MB l
   <img src="docs/media/before-after-light.webp" alt="Two 100% crops of the same sunset beach frame. Left: the original, 45.8 MB at 16 Mbps. Right: Snugclip's output, 18.8 MB at 6.2 Mbps, under the 20 MB line, marked Looks great. The two look the same.">
 </picture>
 
-Watch the 33-second launch video: [`docs/media/snugclip-launch-1080p.mp4`](docs/media/snugclip-launch-1080p.mp4) (1080p, 10 MB).
 
 ## Why Snugclip
 

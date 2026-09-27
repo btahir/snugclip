@@ -27,3 +27,9 @@ fixtures/generated/
 # Tooling
 *.tsbuildinfo
 next-env.d.ts
+
+# Launch media (videos, GIFs, social images) stay local; only README WebPs and screenshots are committed
+*.mp4
+*.mov
+*.gif
+docs/media/social-preview.png
