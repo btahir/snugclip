@@ -1,0 +1,48 @@
+{
+  "name": "@snugclip/web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Snugclip web app: fit any clip under an exact size limit, in your browser. Static export, offline PWA.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "predev": "node scripts/copy-assets.mjs",
+    "dev": "next dev --webpack -p 4317",
+    "prebuild": "node scripts/copy-assets.mjs",
+    "build": "next build --webpack && node scripts/build-sw.mjs",
+    "serve": "node scripts/serve-static.mjs out 4317",
+    "icons": "node scripts/make-icons.mjs",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "test:e2e": "playwright test"
+  },
+  "dependencies": {
+    "@fontsource-variable/atkinson-hyperlegible-next": "^5.3.0",
+    "@fontsource-variable/jetbrains-mono": "^5.3.0",
+    "@fontsource-variable/outfit": "^5.3.0",
+    "@snugclip/core": "workspace:*",
+    "@snugclip/engine-web": "workspace:*",
+    "client-zip": "2.5.1",
+    "mediabunny": "1.60.0",
+    "next": "16.3.6",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "serwist": "9.5.12"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
+    "@mediabunny/aac-encoder": "1.60.0",
+    "@playwright/test": "^1.63.0",
+    "@serwist/build": "9.5.12",
+    "@tailwindcss/postcss": "^4.3.3",
+    "@testing-library/react": "^16.3.3",
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "esbuild": "^0.28.2",
+    "jsdom": "^30.1.1",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^5.9.3",
+    "vitest": "^5.0.2"
+  }
+}
