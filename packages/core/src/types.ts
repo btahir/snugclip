@@ -1,322 +1,303 @@
-// Shared data types. Everything here is plain, JSON-serialisable data so it can cross a
-// Web Worker boundary, go into a job file, or be printed by the CLI/MCP unchanged.
+// Shared data types (PLAN §4.9). Everything except EngineCapabilities.canEncode is plain,
+// JSON-serialisable data, so it can cross a Web Worker boundary, go into a job file, or be
+// printed by the CLI/MCP unchanged.
 
-/** Video codecs Snugclip can produce. */
-export type VideoCodec = 'h264' | 'hevc' | 'av1' | 'vp9';
-/** Audio codecs Snugclip can produce. */
-export type AudioCodec = 'aac' | 'opus';
-/** Output containers. */
-export type Container = 'mp4' | 'webm';
-
-/**
- * User-facing codec choice.
- * - `compatible`: H.264 + AAC in MP4 (default; plays everywhere).
- * - `smaller`: AV1 where it can be encoded, otherwise HEVC (smaller files, weaker playback support).
- * - an explicit codec forces that codec (CLI/MCP power users).
- */
-export type CodecChoice = 'compatible' | 'smaller' | VideoCodec;
-
-/** What an input file contains, as reported by an engine's probe. */
-export interface Probe {
-  /** Container/format name in lower case (mp4, mov, webm, matroska, ...). */
-  container: string;
-  /** File size in bytes. */
-  sizeBytes: number;
-  /** Duration in seconds. */
-  durationSec: number;
-  /** Overall bitrate in bits per second, if known. */
-  bitrate: number | null;
-  video: ProbeVideo | null;
-  audio: ProbeAudio | null;
-}
+export type Bytes = number;
+export type VideoCodecId = 'h264' | 'hevc' | 'av1' | 'vp9';
+export type AudioCodecId = 'aac' | 'opus';
+export type ContainerId = 'mp4' | 'webm';
+/** compatible = H.264; smaller = AV1 → HEVC (first encodable); or force one codec. */
+export type CodecChoice = 'compatible' | 'smaller' | VideoCodecId;
 
 export interface ProbeVideo {
-  /** Source codec name, lower case (h264, hevc, vp9, av1, prores, ...). */
+  /** Normalised codec name: h264 | hevc | av1 | vp9 | vp8 | mpeg2video | prores | … */
   codec: string;
-  /** Coded width/height in pixels, before rotation. */
+  /** Whether this engine can decode it. */
+  decodable: boolean;
   codedWidth: number;
   codedHeight: number;
-  /** Clockwise rotation from the display matrix / rotate tag. */
+  /** After rotation and pixel aspect: what the viewer sees. */
+  displayWidth: number;
+  displayHeight: number;
+  /** Clockwise. (ffprobe's displaymatrix rotation is CCW: cw = (360 − ccw) % 360.) */
   rotation: 0 | 90 | 180 | 270;
-  /** Display width/height after rotation (what the viewer sees). */
-  width: number;
-  height: number;
-  /** Average frame rate in frames per second. */
+  /** Average frame rate. */
   fps: number;
-  /** Video stream bitrate in bits per second, if known. */
-  bitrate: number | null;
-  /** Number of frames, if known. */
-  frameCount: number | null;
-  /** True for PQ/HLG transfer characteristics (HDR10, HLG, Dolby Vision base layers). */
+  frameCount?: number;
+  /** Video stream bitrate, bits/s. */
+  bitrate?: number;
   hdr: boolean;
-  /** Pixel format / bit depth hint, if known (e.g. yuv420p10le). */
-  pixelFormat: string | null;
+  transfer?: string;
+  primaries?: string;
+  bitDepth?: number;
 }
 
 export interface ProbeAudio {
   codec: string;
   channels: number;
   sampleRate: number;
-  /** Audio stream bitrate in bits per second, if known. */
-  bitrate: number | null;
+  /** bits/s */
+  bitrate?: number;
+  decodable: boolean;
 }
 
-/** Where the file is going. Sizes are always bytes. */
-export interface Target {
-  bytes: number;
-  /** Preset id when the target came from a preset (e.g. `discord-free`). */
-  presetId?: string;
-  /** Human label, e.g. "Discord (free)" or "10 MB". */
-  label?: string;
-}
-
-/** Frame rate policy. `auto` caps at 60 and drops 60→30 when the budget is tight. */
-export type FpsPolicy = 'auto' | 'keep' | number;
-
-export interface TrimRange {
-  /** Start in seconds from the beginning of the source. */
-  start: number;
-  /** End in seconds from the beginning of the source (exclusive). */
-  end: number;
-}
-
-/** User options. Every field is optional; the defaults just work. */
-export interface Options {
-  codec?: CodecChoice;
-  /**
-   * Cap on the output's shorter side, i.e. the "p" number: 720 means 720p in either
-   * orientation (1280x720 landscape, 720x1280 portrait). Never upscales.
-   */
-  maxHeight?: number | null;
-  fps?: FpsPolicy;
-  trim?: TrimRange | null;
-  mute?: boolean;
-  /** Re-encode even when the file is already under the target (default: pass through). */
-  reencode?: boolean;
-}
-
-/** Fully resolved options (defaults applied). */
-export interface ResolvedOptions {
-  codec: CodecChoice;
-  maxHeight: number | null;
-  fps: FpsPolicy;
-  trim: TrimRange | null;
-  mute: boolean;
-  reencode: boolean;
-}
-
-/** What an engine can encode on this machine / browser. */
-export interface Capabilities {
-  video: VideoCodec[];
-  audio: AudioCodec[];
-  /** Audio codecs the engine can copy without re-encoding (stream copy). */
-  audioCopy: string[];
-  /**
-   * How the engine controls rate. `two-pass` encoders land within a few percent of the
-   * requested bitrate; `one-pass` encoders (WebCodecs, hardware) drift and benefit from
-   * calibration samples.
-   */
-  rateControl: 'two-pass' | 'one-pass';
-}
-
-/** One encode, fully specified. This is what an Engine receives. */
-export interface EncodeSpec {
-  container: Container;
-  video: EncodeVideo | null;
-  audio: EncodeAudio | null;
-  /** Source range to encode; null = whole file. */
-  trim: TrimRange | null;
-  /** True for short calibration samples (engines may use faster settings). */
-  sample?: boolean;
-}
-
-export interface EncodeVideo {
-  codec: VideoCodec;
-  /** Output display width/height (even numbers). */
-  width: number;
-  height: number;
-  fps: number;
-  /** Requested average bitrate, bits per second. */
-  bitrate: number;
-  /** Peak bitrate cap for VBV (bits per second). */
-  maxBitrate: number;
-  /** VBV buffer size in bits. */
-  bufferSize: number;
-}
-
-export interface EncodeAudio {
-  codec: AudioCodec;
-  /** True to stream-copy the source audio unchanged (bitrate is then the source's). */
-  copy: boolean;
-  bitrate: number;
-  channels: number;
-  sampleRate: number;
-}
-
-/** Byte budget breakdown for a plan. */
-export interface Budget {
-  targetBytes: number;
-  /** Bytes we aim for (target × fill goal). Encodes may land anywhere ≤ target. */
-  goalBytes: number;
-  overheadBytes: number;
-  audioBytes: number;
-  videoBytes: number;
-}
-
-export type PlanMode = 'passthrough' | 'encode' | 'impossible';
-
-/** A resolution/fps rung the planner considered. */
-export interface Rung {
-  width: number;
-  height: number;
-  fps: number;
-  /** Bits per pixel per frame this rung would get from the video budget. */
-  bpp: number;
-}
-
-export interface Plan {
-  mode: PlanMode;
-  target: Target;
-  options: ResolvedOptions;
-  /** Output duration in seconds (trim applied). */
+export interface Probe {
+  /** 'mp4' | 'mov' | 'webm' | 'mkv' | 'unknown' … */
+  container: string;
+  sizeBytes: Bytes;
   durationSec: number;
-  /** Chosen video codec after resolving `compatible` / `smaller` against capabilities. */
-  videoCodec: VideoCodec | null;
-  audioCodec: AudioCodec | null;
-  container: Container;
-  budget: Budget;
-  /** The encode to try first (null for passthrough / impossible). */
-  spec: EncodeSpec | null;
-  /** The ladder from the chosen rung downward, used by the fit loop when it drops rungs. */
-  ladder: Rung[];
-  /** Index into `ladder` of the chosen rung. */
-  rungIndex: number;
-  /** Smallest output Snugclip can make for this input with these options, in bytes. */
-  minimumBytes: number;
-  /** Why the plan is what it is, in plain words (for `snugclip plan`). */
-  reasons: string[];
-  warnings: string[];
+  video: ProbeVideo | null;
+  audio: ProbeAudio | null;
 }
 
-export type AttemptKind = 'sample' | 'encode';
-
-export interface Attempt {
-  kind: AttemptKind;
-  /** 1-based attempt number within its kind. */
-  n: number;
-  width: number;
-  height: number;
-  fps: number;
-  requestedVideoBitrate: number;
-  bytes: number;
-  /** Measured video bitrate (bits/s) if the engine reported it, else estimated. */
-  actualVideoBitrate: number;
-  fits: boolean;
-  /** Whether this attempt's output was kept as the result candidate. */
-  kept: boolean;
-  elapsedMs: number;
-  note?: string;
-}
-
-export interface QualityMetrics {
-  /** Mean SSIM (luma) over sampled frames, 0..1. */
-  ssimMean: number;
-  /** Worst SSIM over sampled frames. */
-  ssimMin: number;
-  /** Mean PSNR (luma) in dB; capped at 100 for identical frames. */
-  psnrMean: number;
-  /** Number of frames compared. */
-  frames: number;
-  /** Resolution the comparison ran at. */
-  width: number;
-  height: number;
-}
-
-export type QualityVerdict = 'great' | 'softer' | 'soft';
-
-export interface QualityReport extends QualityMetrics {
-  verdict: QualityVerdict;
-  /** Plain-words label for the UI badge: "Looks great", "Softer, still clear", "Noticeably soft". */
+export interface Target {
+  bytes: Bytes;
+  presetId?: string;
   label: string;
 }
 
-export type Verdict = 'fits' | 'passthrough' | 'impossible' | 'unsupported' | 'failed' | 'cancelled';
-
-export interface OutputInfo {
-  path?: string;
-  name?: string;
-  bytes: number;
-  container: Container | string;
-  durationSec: number;
-  video: { codec: string; width: number; height: number; fps: number; bitrate: number } | null;
-  audio: { codec: string; bitrate: number; channels: number } | null;
+export interface TrimRange {
+  startSec: number;
+  endSec: number;
 }
 
-/** The result of one compression, shared by the web app, CLI and MCP server. */
-export interface Report {
-  kind: 'snugclip.report';
-  version: number;
-  verdict: Verdict;
-  /** True when an output exists and is ≤ target bytes (always true for fits/passthrough). */
+export interface Options {
+  /** Default 'compatible'. */
+  codec: CodecChoice;
+  /** "Max height" in the UI: 720p-class, applied to the short side (either orientation). */
+  maxShortSide?: number;
+  fpsCap?: number;
+  keepFps: boolean;
+  mute: boolean;
+  trim?: TrimRange;
+  reencode: boolean;
+  /** 1..8. Default: 3 for two-pass encoders, 4 otherwise. */
+  maxAttempts?: number;
+  /** 8..12, default 10. */
+  qualityFrames?: number;
+}
+
+export interface EngineCapabilities {
+  id: 'web' | 'ffmpeg';
+  version: string;
+  encoderName: Partial<Record<VideoCodecId, string>>;
+  videoCodecs: VideoCodecId[];
+  audioCodecs: AudioCodecId[];
+  containers: ContainerId[];
+  /** True when the primary (H.264) encoder runs two passes (rate lands within a few percent). */
+  twoPass: boolean;
+  /** Extension: codecs whose encoder is two-pass (used by rateCalibration 'auto'). Defaults to ['h264'] when twoPass. */
+  twoPassCodecs?: VideoCodecId[];
+  /** Fraction of the target held back on the first attempt (m in PLAN §4.1). */
+  initialMargin: number;
+  /** Extension: per-codec margin override (e.g. videotoolbox 0.04 while libx264 is 0.02). */
+  marginByCodec?: Partial<Record<VideoCodecId, number>>;
+  rateCalibration: 'always' | 'auto' | 'never';
+  audioCopyWithTrim: boolean;
+  maxEncodeShortSide: Partial<Record<VideoCodecId, number>>;
+  /** Synchronous; engines precompute. */
+  canEncode(codec: VideoCodecId, w: number, h: number, bps: number): boolean;
+}
+
+export interface Rung {
+  shortSide: number;
+  width: number;
+  height: number;
+  fps: number;
+  bpp: number;
+}
+
+export type Warning = { code: string; message: string };
+
+export interface PlanVideo {
+  codec: VideoCodecId;
+  width: number;
+  height: number;
+  fps: number;
+  /** Requested video bitrate, bits/s. */
+  bitrate: number;
+  bpp: number;
+  bppTier: 'A' | 'B';
+  keyframeIntervalSec: number;
+  rungIndex: number;
+  capped?: 'quality-ceiling' | 'source-bitrate';
+}
+
+export interface PlanAudio {
+  mode: 'encode' | 'copy' | 'none';
+  codec?: AudioCodecId;
+  bitrate?: number;
+  channels?: 1 | 2;
+  sampleRate?: number;
+  bytes: Bytes;
+}
+
+export interface Plan {
+  version: 1;
+  feasible: boolean;
+  passThrough: boolean;
+  targetBytes: Bytes;
+  marginBytes: Bytes;
+  overheadBytes: Bytes;
+  minimumBytes: Bytes;
+  durationSec: number;
+  container: ContainerId;
+  video: PlanVideo | null;
+  audio: PlanAudio;
+  rungs: Rung[];
+  trim?: TrimRange;
+  warnings: Warning[];
+  /** Extension: plain-words explanation of each decision (shown by `snugclip plan`). */
+  reasons: string[];
+}
+
+export type EncodePurpose = 'calibration' | 'full' | 'rescue';
+
+/** One engine invocation. */
+export interface EncodePlan<I> {
+  input: I;
+  purpose: EncodePurpose;
+  container: ContainerId;
+  trim?: TrimRange;
+  video: {
+    codec: VideoCodecId;
+    width: number;
+    height: number;
+    fps: number;
+    bitrate: number;
+    keyframeIntervalSec: number;
+    latency?: 'quality' | 'realtime';
+  };
+  audio: PlanAudio;
+  hdrToSdr: boolean;
+}
+
+export interface EncodeResult<O> {
+  output: O;
+  bytes: Bytes;
+  videoBytes?: Bytes;
+  audioBytes?: Bytes;
+  durationSec: number;
+  encoder: string;
+}
+
+export interface Attempt {
+  index: number;
+  purpose: EncodePurpose;
+  rung: Rung;
+  requestedVideoBitrate: number;
+  bytes: Bytes;
+  videoBytes?: Bytes;
   fits: boolean;
-  input: { path?: string; name?: string; bytes: number; probe: Probe | null };
-  target: Target;
-  output: OutputInfo | null;
-  plan: Plan | null;
-  attempts: Attempt[];
-  calibration: { samples: number; ratio: number } | null;
-  quality: QualityReport | null;
-  /** Present for `impossible`: the smallest size that could fit. */
-  minimumBytes: number | null;
-  warnings: string[];
-  error: { code: string; message: string } | null;
-  engine: { name: string; version: string; encoder?: string } | null;
   elapsedMs: number;
+  /** Extension: why this attempt ended the way it did. */
+  note?: string;
+}
+
+/** RGBA pixels (despite the name); core converts to luma. */
+export interface LumaFrame {
+  width: number;
+  height: number;
+  data: Uint8ClampedArray;
 }
 
 /**
- * Minimal AbortSignal shape so the core needs neither DOM nor Node typings.
- * A real `AbortSignal` (browser or Node) satisfies it.
+ * Minimal AbortSignal shape so the core needs neither DOM nor Node typings. A real
+ * `AbortSignal` (browser or Node) satisfies it.
  */
 export interface AbortSignalLike {
   readonly aborted: boolean;
+  readonly reason?: unknown;
   addEventListener(type: 'abort', listener: () => void, options?: { once?: boolean }): void;
   removeEventListener(type: 'abort', listener: () => void): void;
 }
 
-/** Progress reported by an engine during one encode: fraction 0..1 of that encode. */
-export type EncodeProgress = (fraction: number) => void;
-
-export interface EncodeOptions {
-  signal?: AbortSignalLike;
-  onProgress?: EncodeProgress;
+export interface EncodeProgress {
+  fraction: number;
+  encodedSec: number;
 }
 
-export interface EncodeResult<O> {
-  /** Engine-specific handle to the encoded file (a temp path in Node, a Blob in the browser). */
-  output: O;
-  /** Exact size of the encoded file in bytes. */
-  bytes: number;
-  /** Bytes of video payload, if the engine can measure it (improves calibration). */
-  videoBytes?: number;
-  /** Bytes of audio payload, if known. */
-  audioBytes?: number;
-  /** Encoder that actually ran (e.g. libx264, h264_videotoolbox, webcodecs:avc1.640028). */
-  encoder?: string;
+export interface Engine<I, O> {
+  readonly id: 'web' | 'ffmpeg';
+  capabilities(): Promise<EngineCapabilities>;
+  probe(input: I): Promise<Probe>;
+  encode(plan: EncodePlan<I>, opts: { signal: AbortSignalLike; onProgress?: (p: EncodeProgress) => void }): Promise<EncodeResult<O>>;
+  /** Frames nearest to `timesSec` (each file's own timeline), scaled so the short side = evalShortSide, RGBA. */
+  frames(src: I | O, timesSec: number[], evalShortSide: number, signal: AbortSignalLike): Promise<LumaFrame[]>;
+  /** The input unchanged as an output (web: the original File; CLI: a byte-identical copy). */
+  passThrough(input: I): Promise<O>;
+  /** temp → final (CLI) / mark final (web). The core calls it only when bytes ≤ target. */
+  commit(output: O): Promise<O>;
+  discard(output: O): Promise<void>;
 }
 
-/**
- * The one interface both engines implement (ffmpeg in Node, WebCodecs in the browser).
- * `I` is the engine's input handle (file path, File/Blob); `O` its output handle.
- */
-export interface Engine<I = unknown, O = unknown> {
-  readonly name: string;
-  readonly version: string;
-  probe(input: I, opts?: { signal?: AbortSignalLike }): Promise<Probe>;
-  capabilities(): Promise<Capabilities>;
-  encode(input: I, spec: EncodeSpec, opts?: EncodeOptions): Promise<EncodeResult<O>>;
-  /** Frees an output the fit loop decided not to keep (deletes temp files, drops Blobs). */
-  discard?(output: O): Promise<void> | void;
-  /** Decodes matched frames of input and output and returns SSIM/PSNR (see `compareFrames`). */
-  measureQuality?(input: I, output: O, spec: EncodeSpec, opts: { frames: number; signal?: AbortSignalLike }): Promise<QualityMetrics>;
+export interface QualityReport {
+  frames: number;
+  evalShortSide: number;
+  ssimMean: number;
+  ssimMin: number;
+  psnrMean: number;
+  psnrMin: number;
+  verdict: 'great' | 'softer' | 'soft';
+  label: string;
+  /** Extension: SSIM implementation and variant, e.g. "ssim.js weber". */
+  algorithm?: string;
+}
+
+export type ReportStatus = 'fit' | 'passthrough' | 'impossible' | 'unsupported' | 'cancelled' | 'error';
+
+export interface ReportOutput {
+  name: string;
+  path?: string;
+  bytes: Bytes;
+  container: ContainerId;
+  mime: string;
+  video: { codec: VideoCodecId; width: number; height: number; fps: number; bitrate: number } | null;
+  audio: { codec: AudioCodecId | 'copy'; bitrate: number; channels: number } | null;
+  durationSec: number;
+}
+
+export interface Report {
+  snugclip: 'report';
+  version: 1;
+  /** From the injected clock. */
+  createdAt: string;
+  status: ReportStatus;
+  fits: boolean;
+  passThrough: boolean;
+  input: { name: string; path?: string; bytes: Bytes; probe: Probe | null };
+  target: Target;
+  /** Null unless status is fit/passthrough. For pass-through, codec fields describe the source. */
+  output: ReportOutput | null;
+  plan: Plan | null;
+  attempts: Attempt[];
+  quality: QualityReport | null;
+  complexity?: 'low' | 'medium' | 'high';
+  minimumBytes?: Bytes;
+  minimumSource?: 'planned' | 'measured';
+  warnings: Warning[];
+  error?: { code: string; message: string; hint?: string };
+  engine: { id: 'web' | 'ffmpeg'; version: string; encoder: string };
+  elapsedMs: number;
+}
+
+export type FitPhase = 'probing' | 'planning' | 'calibrating' | 'encoding' | 'checking' | 'done';
+
+export interface FitProgress {
+  phase: FitPhase;
+  /** Full-attempt number (1-based) while encoding; sample number while calibrating. */
+  attempt: number;
+  /** Expected number of full attempts (re-normalised live). */
+  expectedAttempts: number;
+  /** Whole job, 0..1, monotonic. */
+  overall: number;
+  elapsedMs: number;
+  /** null until there's enough signal. */
+  etaMs: number | null;
+}
+
+/** Injected timers for the stall watchdog (the core never touches host globals). */
+export interface Timers {
+  setTimeout(fn: () => void, ms: number): unknown;
+  clearTimeout(handle: unknown): void;
 }

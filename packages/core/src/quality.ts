@@ -1,161 +1,97 @@
-// Quality metrics on 8-bit luma frames. Both engines decode matched frames to gray bytes at
-// the same size and hand them here, so the web app and CLI score quality identically.
+// Quality metrics (PLAN §5). Engines hand over matched RGBA frames scaled to the same eval
+// short side; the core computes SSIM (ssim.js, default "weber" variant) and luma PSNR, so the
+// web app and the CLI score quality identically.
+import { ssim as ssimJs } from 'ssim.js';
 import { TUNING } from './tuning.js';
-import type { QualityMetrics, QualityReport, QualityVerdict } from './types.js';
+import type { LumaFrame, Probe, QualityReport } from './types.js';
 
-const K1 = 0.01;
-const K2 = 0.03;
-const L = 255;
-const C1 = (K1 * L) ** 2;
-const C2 = (K2 * L) ** 2;
-const RADIUS = 5; // 11-tap window
-const SIGMA = 1.5;
+export const SSIM_ALGORITHM = 'ssim.js weber (default options)';
 
-const KERNEL: Float64Array = (() => {
-  const k = new Float64Array(2 * RADIUS + 1);
-  let sum = 0;
-  for (let i = -RADIUS; i <= RADIUS; i++) {
-    const v = Math.exp(-(i * i) / (2 * SIGMA * SIGMA));
-    k[i + RADIUS] = v;
-    sum += v;
-  }
-  for (let i = 0; i < k.length; i++) k[i]! /= sum;
-  return k;
-})();
+/** Eval resolution: min(720, source display short side). */
+export function evalShortSide(probe: Probe): number {
+  const v = probe.video;
+  if (!v) return TUNING.quality.maxEvalShortSide;
+  return Math.min(TUNING.quality.maxEvalShortSide, Math.min(v.displayWidth, v.displayHeight));
+}
 
-/** Separable Gaussian blur of `src` (w×h) over the "valid" region; returns (w-10)×(h-10). */
-function blurValid(src: Float64Array, w: number, h: number): Float64Array {
-  const ow = w - 2 * RADIUS;
-  const oh = h - 2 * RADIUS;
-  const tmp = new Float64Array(ow * h);
-  for (let y = 0; y < h; y++) {
-    const row = y * w;
-    for (let x = 0; x < ow; x++) {
-      let s = 0;
-      for (let k = 0; k <= 2 * RADIUS; k++) s += src[row + x + k]! * KERNEL[k]!;
-      tmp[y * ow + x] = s;
-    }
-  }
-  const out = new Float64Array(ow * oh);
-  for (let y = 0; y < oh; y++) {
-    for (let x = 0; x < ow; x++) {
-      let s = 0;
-      for (let k = 0; k <= 2 * RADIUS; k++) s += tmp[(y + k) * ow + x]! * KERNEL[k]!;
-      out[y * ow + x] = s;
-    }
-  }
+/** Output-relative sample times t_i = D·(i + 0.5)/n; add the trim start for the source. */
+export function qualityTimes(durationSec: number, n: number = TUNING.quality.frames): number[] {
+  const count = Math.max(1, Math.floor(n));
+  return Array.from({ length: count }, (_, i) => Math.round(((durationSec * (i + 0.5)) / count) * 1000) / 1000);
+}
+
+/** BT.709 luma from RGBA (integer maths, 0..255). */
+export function toLuma(f: LumaFrame): Uint8Array {
+  const n = f.width * f.height;
+  const out = new Uint8Array(n);
+  const d = f.data;
+  for (let i = 0, j = 0; i < n; i++, j += 4) out[i] = (d[j]! * 2126 + d[j + 1]! * 7152 + d[j + 2]! * 722 + 5000) / 10000;
   return out;
 }
 
-/**
- * Mean SSIM (Wang et al. 2004: 11×11 Gaussian window, σ = 1.5, K1 = 0.01, K2 = 0.03) between two
- * 8-bit gray frames of identical size. Returns 1 for identical frames.
- */
-export function ssim(a: Uint8Array, b: Uint8Array, width: number, height: number): number {
-  if (a.length < width * height || b.length < width * height) throw new RangeError('frame buffers are smaller than width×height');
-  if (width <= 2 * RADIUS || height <= 2 * RADIUS) return a.every((v, i) => v === b[i]) ? 1 : 0;
-  const n = width * height;
-  const x = new Float64Array(n);
-  const y = new Float64Array(n);
-  const xx = new Float64Array(n);
-  const yy = new Float64Array(n);
-  const xy = new Float64Array(n);
-  for (let i = 0; i < n; i++) {
-    const av = a[i]!;
-    const bv = b[i]!;
-    x[i] = av;
-    y[i] = bv;
-    xx[i] = av * av;
-    yy[i] = bv * bv;
-    xy[i] = av * bv;
-  }
-  const mx = blurValid(x, width, height);
-  const my = blurValid(y, width, height);
-  const sxx = blurValid(xx, width, height);
-  const syy = blurValid(yy, width, height);
-  const sxy = blurValid(xy, width, height);
-  let total = 0;
-  for (let i = 0; i < mx.length; i++) {
-    const ux = mx[i]!;
-    const uy = my[i]!;
-    const vx = sxx[i]! - ux * ux;
-    const vy = syy[i]! - uy * uy;
-    const cxy = sxy[i]! - ux * uy;
-    total += ((2 * ux * uy + C1) * (2 * cxy + C2)) / ((ux * ux + uy * uy + C1) * (vx + vy + C2));
-  }
-  return total / mx.length;
+/** Crops an RGBA frame to w×h from the top-left (engines may round the long side differently by 2 px). */
+function crop(f: LumaFrame, w: number, h: number): LumaFrame {
+  if (f.width === w && f.height === h) return f;
+  const data = new Uint8ClampedArray(w * h * 4);
+  for (let y = 0; y < h; y++) data.set(f.data.subarray(y * f.width * 4, y * f.width * 4 + w * 4), y * w * 4);
+  return { width: w, height: h, data };
 }
 
-/** PSNR in dB between two 8-bit gray frames; 100 when identical. */
-export function psnr(a: Uint8Array, b: Uint8Array, width: number, height: number): number {
-  const n = width * height;
+export function psnrLuma(a: Uint8Array, b: Uint8Array): number {
   let se = 0;
-  for (let i = 0; i < n; i++) {
+  for (let i = 0; i < a.length; i++) {
     const d = a[i]! - b[i]!;
     se += d * d;
   }
   if (se === 0) return 100;
-  const mse = se / n;
-  return Math.min(100, 10 * Math.log10((L * L) / mse));
+  return Math.min(100, 10 * Math.log10((255 * 255) / (se / a.length)));
 }
 
-/** Analysis size for quality checks: the output size, scaled so the shorter side is ≤ 720, even. */
-export function analysisSize(width: number, height: number, maxShort: number = TUNING.quality.maxShortSide): { width: number; height: number } {
-  const short = Math.min(width, height);
-  const s = short > maxShort ? maxShort / short : 1;
-  const even = (n: number) => Math.max(2, Math.round((n * s) / 2) * 2);
-  return { width: even(width), height: even(height) };
+export function ssimPair(a: LumaFrame, b: LumaFrame): number {
+  const w = Math.min(a.width, b.width);
+  const h = Math.min(a.height, b.height);
+  return ssimJs(crop(a, w, h), crop(b, w, h)).mssim;
 }
 
-/** Timestamps (seconds, relative to the output start) of the frames to compare. */
-export function sampleTimes(durationSec: number, count: number = TUNING.quality.frames): number[] {
-  const n = Math.max(1, Math.floor(count));
-  const out: number[] = [];
-  // Evenly spaced, avoiding the very first and last frames (fades, encoder warm-up).
-  for (let i = 0; i < n; i++) out.push(Math.round(((durationSec * (i + 0.5)) / n) * 1000) / 1000);
-  return out;
-}
+const r4 = (n: number) => Math.round(n * 10000) / 10000;
+const r2 = (n: number) => Math.round(n * 100) / 100;
 
-export interface FramePair {
-  source: Uint8Array;
-  output: Uint8Array;
-}
-
-/** Scores matched frame pairs (all at `width`×`height`). */
-export function compareFrames(pairs: FramePair[], width: number, height: number): QualityMetrics {
-  if (pairs.length === 0) throw new RangeError('no frames to compare');
-  let sum = 0;
-  let min = 1;
-  let psum = 0;
-  for (const p of pairs) {
-    const s = ssim(p.source, p.output, width, height);
-    sum += s;
-    min = Math.min(min, s);
-    psum += psnr(p.source, p.output, width, height);
+/** Scores [source, output] frame pairs. */
+export function quality(pairs: Array<[LumaFrame, LumaFrame]>): Omit<QualityReport, 'verdict' | 'label'> {
+  if (pairs.length === 0) throw new RangeError('quality() needs at least one frame pair');
+  const ssims: number[] = [];
+  const psnrs: number[] = [];
+  let evalSide = Infinity;
+  for (const [src, out] of pairs) {
+    const w = Math.min(src.width, out.width);
+    const h = Math.min(src.height, out.height);
+    evalSide = Math.min(evalSide, Math.min(w, h));
+    const a = crop(src, w, h);
+    const b = crop(out, w, h);
+    ssims.push(ssimJs(a, b).mssim);
+    psnrs.push(psnrLuma(toLuma(a), toLuma(b)));
   }
-  const r4 = (n: number) => Math.round(n * 10000) / 10000;
   return {
-    ssimMean: r4(sum / pairs.length),
-    ssimMin: r4(min),
-    psnrMean: Math.round((psum / pairs.length) * 100) / 100,
     frames: pairs.length,
-    width,
-    height,
+    evalShortSide: evalSide,
+    ssimMean: r4(ssims.reduce((s, x) => s + x, 0) / ssims.length),
+    ssimMin: r4(Math.min(...ssims)),
+    psnrMean: r2(psnrs.reduce((s, x) => s + x, 0) / psnrs.length),
+    psnrMin: r2(Math.min(...psnrs)),
+    algorithm: SSIM_ALGORITHM,
   };
 }
 
-const LABELS: Record<QualityVerdict, string> = {
-  great: 'Looks great',
-  softer: 'Softer, still clear',
-  soft: 'Noticeably soft',
-};
+const LABELS = { great: 'Looks great', softer: 'Softer, still clear', soft: 'Noticeably soft' } as const;
 
-/** Maps mean SSIM to the plain-words badge. */
-export function qualityVerdict(ssimMean: number): { verdict: QualityVerdict; label: string } {
-  const verdict: QualityVerdict = ssimMean >= TUNING.verdict.great ? 'great' : ssimMean >= TUNING.verdict.softer ? 'softer' : 'soft';
-  return { verdict, label: LABELS[verdict] };
+/** Plain-words badge (PLAN §5). */
+export function verdict(ssimMean: number, ssimMin: number): Pick<QualityReport, 'verdict' | 'label'> {
+  const t = TUNING.verdict;
+  const v = ssimMean >= t.great.mean && ssimMin >= t.great.min ? 'great' : ssimMean >= t.softer.mean && ssimMin >= t.softer.min ? 'softer' : 'soft';
+  return { verdict: v, label: LABELS[v] };
 }
 
-export function toQualityReport(m: QualityMetrics): QualityReport {
-  return { ...m, ...qualityVerdict(m.ssimMean) };
+/** Complexity from calibration-sample SSIM (PLAN §4.7). */
+export function complexityFrom(ssimMean: number): 'low' | 'medium' | 'high' {
+  return ssimMean >= TUNING.complexity.low ? 'low' : ssimMean >= TUNING.complexity.medium ? 'medium' : 'high';
 }

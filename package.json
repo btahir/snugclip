@@ -15,7 +15,8 @@
     "test:matrix": "../research/heavy.sh node scripts/fit-matrix.mjs",
     "fixtures": "../research/heavy.sh node scripts/make-fixtures.mjs",
     "licenses:check": "node scripts/check-licenses.mjs",
-    "snugclip": "node packages/cli/bin/snugclip.js"
+    "snugclip": "node packages/cli/bin/snugclip.js",
+    "check:pure": "node scripts/check-pure.mjs"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

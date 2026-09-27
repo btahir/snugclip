@@ -1,195 +1,197 @@
+// A5: fit-loop state machine driven through runFit with scripted fake engines.
 import { describe, expect, it } from 'vitest';
-import { MB, calibrationWindows, compress, secantStep, type FitProgress } from '../src/index.js';
-import { FakeClock, FakeEngine, makeProbe, type FakeBehaviour } from './fake-engine.js';
+import { MB, applyResult, initFitState, nextStep, plan, runFit, type FitProgress, type Report } from '../src/index.js';
+import { FakeEngine, makeProbe, testCaps, webCaps, type RateModel } from './fake-engine.js';
 
-async function run(behaviour: FakeBehaviour, opts: { target?: number; probe?: ReturnType<typeof makeProbe>; calibration?: 'auto' | 'on' | 'off'; signal?: AbortSignal } = {}) {
-  const clock = new FakeClock();
-  const probe = opts.probe ?? makeProbe();
-  const engine = new FakeEngine(probe, behaviour, clock);
+const nodeTimers = { setTimeout: (fn: () => void, ms: number) => setTimeout(fn, ms), clearTimeout: (h: unknown) => clearTimeout(h as ReturnType<typeof setTimeout>) };
+
+async function run(model: RateModel, o: { probe?: ReturnType<typeof makeProbe>; target?: number; caps?: ReturnType<typeof testCaps>; signal?: AbortSignal; stallMs?: number; options?: Record<string, unknown> } = {}) {
+  const probe = o.probe ?? makeProbe();
+  const engine = new FakeEngine(probe, model, o.caps ?? testCaps());
+  let t = 1_000_000;
   const progress: FitProgress[] = [];
-  const result = await compress({
-    engine,
-    input: 'in.mp4',
-    target: { bytes: opts.target ?? 10 * MB },
-    clock: clock.now,
+  const report = await runFit(engine, 'in.mp4', { bytes: o.target ?? 10 * MB, label: '10 MB' }, o.options ?? {}, {
+    now: () => (t += 50),
+    signal: o.signal ?? new AbortController().signal,
     onProgress: (p) => progress.push(p),
-    ...(opts.calibration ? { calibration: opts.calibration } : {}),
-    ...(opts.signal ? { signal: opts.signal } : {}),
+    inputName: 'in.mp4',
+    ...(o.stallMs ? { stallMs: o.stallMs, timers: nodeTimers } : {}),
   });
-  return { ...result, engine, progress, clock };
+  return { report, engine, progress };
 }
 
-function assertNeverKeptOver(r: Awaited<ReturnType<typeof run>>) {
-  const target = r.report.target.bytes;
-  for (const a of r.report.attempts) if (a.kept) expect(a.bytes).toBeLessThanOrEqual(target);
-  if (r.output) expect(r.output.bytes).toBeLessThanOrEqual(target);
-  // Every output the loop didn't return was discarded (no leaked temp files).
-  const live = [...r.engine.live];
-  expect(live).toEqual(r.output ? [r.output.id] : []);
+function invariants(r: { report: Report; engine: FakeEngine }) {
+  const T = r.report.target.bytes;
+  for (const c of r.engine.committed) expect(c.bytes).toBeLessThanOrEqual(T);
+  expect(r.engine.committed.length).toBeLessThanOrEqual(1);
+  // Nothing leaks: every encoded output was committed or discarded.
+  expect([...r.engine.live].filter((id) => !r.engine.committed.some((c) => c.id === id))).toEqual([]);
+  if (r.report.status === 'fit') {
+    expect(r.report.output!.bytes).toBeLessThanOrEqual(T);
+    expect(r.engine.committed).toHaveLength(1);
+  } else expect(r.engine.committed).toHaveLength(0);
 }
 
-describe('fit loop (fake engine)', () => {
-  it('accurate encoder: one attempt, fits between acceptFill and target', async () => {
+const full = (r: Report) => r.attempts.filter((a) => a.purpose !== 'calibration');
+
+describe('fit loop', () => {
+  it('(a) accurate encoder fits on attempt 1', async () => {
     const r = await run({ ratio: 1 });
-    expect(r.report.verdict).toBe('fits');
-    expect(r.report.attempts.filter((a) => a.kind === 'encode')).toHaveLength(1);
-    expect(r.output!.bytes).toBeLessThanOrEqual(10 * MB);
-    expect(r.output!.bytes).toBeGreaterThanOrEqual(0.9 * 10 * MB);
-    expect(r.report.quality?.label).toBe('Looks great');
-    assertNeverKeptOver(r);
+    expect(r.report.status).toBe('fit');
+    expect(full(r.report)).toHaveLength(1);
+    expect(r.report.output!.bytes).toBeGreaterThanOrEqual(0.9 * 10 * MB);
+    expect(r.report.quality).toMatchObject({ verdict: 'great', label: 'Looks great', frames: 10 });
+    expect(r.report.engine).toEqual({ id: 'ffmpeg', version: 'test', encoder: 'fake264' });
+    invariants(r);
   });
-
-  it('overshooting encoder: first output discarded, corrected under target', async () => {
+  it('(b) +15% overshoot: fits by attempt ≤ 3 and never commits over-target', async () => {
     const r = await run({ ratio: 1.15 });
-    const encodes = r.report.attempts.filter((a) => a.kind === 'encode');
-    expect(encodes[0]!.fits).toBe(false);
-    expect(encodes[0]!.kept).toBe(false);
-    expect(r.report.verdict).toBe('fits');
-    expect(encodes.length).toBe(2);
-    assertNeverKeptOver(r);
+    expect(r.report.status).toBe('fit');
+    expect(full(r.report)[0]!.fits).toBe(false);
+    expect(full(r.report).length).toBeLessThanOrEqual(3);
+    invariants(r);
   });
-
-  it('undershooting encoder (static content): climbs back toward the target', async () => {
-    const r = await run({ ratio: 0.55 });
-    const encodes = r.report.attempts.filter((a) => a.kind === 'encode');
-    expect(encodes.length).toBeGreaterThanOrEqual(2);
-    expect(encodes[0]!.fits).toBe(true);
-    expect(r.output!.bytes).toBeGreaterThanOrEqual(0.9 * 10 * MB);
-    assertNeverKeptOver(r);
+  it('(c) −30% undershoot: raises the bitrate and ends ≥ 0.90·T', async () => {
+    const r = await run({ ratio: 0.7 });
+    expect(r.report.status).toBe('fit');
+    expect(full(r.report).length).toBeGreaterThanOrEqual(2);
+    expect(r.report.output!.bytes).toBeGreaterThanOrEqual(0.9 * 10 * MB);
+    invariants(r);
   });
-
-  it('drifting encoder: first attempt 25% heavy, later ones accurate', async () => {
-    const r = await run({ ratio: 1, drift: { 1: 1.25 } });
-    expect(r.report.verdict).toBe('fits');
-    assertNeverKeptOver(r);
+  it('(d) encoder floor: drops a rung', async () => {
+    // Floor at 0.10 bpp: the 480p rung can't reach the budget, 360p can.
+    const r = await run({ floorBpp: 0.1 });
+    expect(r.report.status).toBe('fit');
+    const f = full(r.report);
+    const kept = f.find((a) => a.bytes === r.report.output!.bytes)!;
+    expect(kept.rung.width * kept.rung.height).toBeLessThan(f[0]!.rung.width * f[0]!.rung.height);
+    expect(r.report.warnings.map((w) => w.code)).toContain('encoder-floor');
+    invariants(r);
   });
-
-  it('encoder floor: drops a rung when asking for fewer bits stops working', async () => {
-    // Floor at 0.12 bpp: at 480p30 the planner's ~0.094 bpp request can't be honoured.
-    const r = await run({ floorBpp: 0.12 });
-    expect(r.report.verdict).toBe('fits');
-    const encodes = r.report.attempts.filter((a) => a.kind === 'encode');
-    const first = encodes[0]!;
-    const last = encodes.find((a) => a.kept)!;
-    expect(last.width * last.height).toBeLessThan(first.width * first.height);
-    expect(r.report.warnings.join(' ')).toMatch(/dropped to/i);
-    assertNeverKeptOver(r);
+  it('(d) floor at the lowest rung returns impossible with measured minimumBytes', async () => {
+    // 1 h clip at a target just above the planned minimum, with a floor far above the planner's.
+    const probe = makeProbe({ durationSec: 3600 });
+    const min = plan(probe, { bytes: 1 * MB, label: 'x' }, {}, testCaps()).minimumBytes;
+    const r = await run({ floorBpp: 0.3 }, { probe, target: Math.ceil(min * 1.02), options: { maxAttempts: 8 } });
+    expect(r.report.status).toBe('impossible');
+    expect(r.report.error?.code).toBe('E_IMPOSSIBLE');
+    expect(r.report.minimumSource).toBe('measured');
+    const minObserved = Math.min(...full(r.report).map((a) => a.bytes));
+    expect(r.report.minimumBytes).toBe(Math.ceil(minObserved * 1.05));
+    invariants(r);
   });
-
-  it('hopeless encoder: fails with no output and discards everything', async () => {
-    const r = await run({ ratio: 3, floorBpp: 5 });
-    expect(r.report.verdict).toBe('failed');
-    expect(r.report.error?.code).toBe('COULD_NOT_FIT');
-    expect(r.output).toBeNull();
-    expect(r.report.attempts.every((a) => !a.kept)).toBe(true);
-    assertNeverKeptOver(r);
+  it('(e) always-overshoot: rescue attempt, then E_FIT_FAILED, no commit', async () => {
+    const r = await run({ ratio: 1.6, drift: { 1: 1, 2: 3, 3: 9, 4: 27 } });
+    expect(r.report.status).toBe('error');
+    expect(r.report.error?.code).toBe('E_FIT_FAILED');
+    expect(r.report.attempts.at(-1)!.purpose).toBe('rescue');
+    expect(full(r.report)).toHaveLength(4);
+    invariants(r);
   });
-
-  it('one-pass engine calibrates with samples first and uses the measured ratio', async () => {
-    const r = await run({ ratio: 1.3, rateControl: 'one-pass' });
-    const samples = r.report.attempts.filter((a) => a.kind === 'sample');
-    expect(samples.length).toBe(3);
-    expect(r.report.calibration?.ratio).toBeCloseTo(1.3, 2);
-    expect(r.engine.calls.filter((c) => c.sample).every((c) => c.audio === null)).toBe(true);
-    // Calibration means the first full encode already fits.
-    expect(r.report.attempts.filter((a) => a.kind === 'encode')).toHaveLength(1);
-    expect(r.report.verdict).toBe('fits');
-    assertNeverKeptOver(r);
+  it('(f) stall: one realtime retry, then E_STALL', async () => {
+    const r = await run({ stallOn: [1, 2] }, { stallMs: 30 });
+    expect(r.report.status).toBe('error');
+    expect(r.report.error?.code).toBe('E_STALL');
+    expect(r.engine.calls[1]!.video.latency).toBe('realtime');
+    expect(r.engine.calls[0]!.video.latency).toBe('quality');
+    invariants(r);
   });
-
-  it('two-pass engine skips calibration by default; calibration "on" forces it', async () => {
-    expect((await run({})).report.calibration).toBeNull();
-    expect((await run({}, { calibration: 'on' })).report.calibration?.samples).toBe(3);
+  it('(f) a single stall recovers in realtime mode', async () => {
+    const r = await run({ stallOn: [1] }, { stallMs: 30 });
+    expect(r.report.status).toBe('fit');
+    expect(r.report.warnings.map((w) => w.code)).toContain('stall-retry');
+    invariants(r);
   });
-
-  it('passthrough returns no output and verdict passthrough', async () => {
-    const r = await run({}, { probe: makeProbe({ sizeBytes: 3 * MB }) });
-    expect(r.report.verdict).toBe('passthrough');
-    expect(r.report.fits).toBe(true);
-    expect(r.output).toBeNull();
-    expect(r.engine.calls).toHaveLength(0);
-    expect(r.report.output?.bytes).toBe(3 * MB);
-  });
-
-  it('impossible target: refuses before encoding with the minimum size', async () => {
-    const r = await run({}, { probe: makeProbe({ durationSec: 1800 }), target: 8 * MB });
-    expect(r.report.verdict).toBe('impossible');
-    expect(r.report.error?.code).toBe('IMPOSSIBLE_TARGET');
-    expect(r.report.minimumBytes).toBeGreaterThan(8 * MB);
-    expect(r.engine.calls).toHaveLength(0);
-  });
-
-  it('cancel mid-encode: verdict cancelled, nothing leaked', async () => {
+  it('(g) abort mid-attempt: cancelled, discard() called, no commit', async () => {
     const controller = new AbortController();
     const r = await run({ ratio: 1.15, abortOn: { call: 2, controller } }, { signal: controller.signal });
-    expect(r.report.verdict).toBe('cancelled');
-    expect(r.output).toBeNull();
-    expect([...r.engine.live]).toEqual([]);
+    expect(r.report.status).toBe('cancelled');
+    expect(r.engine.discarded.length).toBeGreaterThanOrEqual(1);
+    invariants(r);
   });
-
-  it('cancel after a fitting-but-small attempt discards the kept output too', async () => {
+  it('(g) abort after a kept-but-small attempt discards it', async () => {
     const controller = new AbortController();
     const r = await run({ ratio: 0.5, abortOn: { call: 2, controller } }, { signal: controller.signal });
-    expect(r.report.verdict).toBe('cancelled');
-    expect([...r.engine.live]).toEqual([]);
+    expect(r.report.status).toBe('cancelled');
+    expect(r.engine.discarded).toContain(1);
+    invariants(r);
   });
-
-  it('engine errors become a failed report', async () => {
-    const r = await run({ failOn: { call: 1, error: new Error('encoder exploded') } });
-    expect(r.report.verdict).toBe('failed');
-    expect(r.report.error).toEqual({ code: 'ENCODE_FAILED', message: 'encoder exploded' });
+  it('calibrates one-pass engines (median ratio) and reports complexity', async () => {
+    const r = await run({ ratio: 1.3 }, { caps: webCaps() });
+    const cal = r.report.attempts.filter((a) => a.purpose === 'calibration');
+    expect(cal).toHaveLength(3);
+    expect(r.engine.calls.filter((c) => c.purpose === 'calibration').every((c) => c.audio.mode === 'none' && c.trim)).toBe(true);
+    expect(r.report.complexity).toBe('low');
+    expect(full(r.report)).toHaveLength(1);
+    expect(r.report.status).toBe('fit');
+    invariants(r);
   });
-
-  it('progress is monotonic, ends at 1, and elapsed uses the injected clock', async () => {
-    const r = await run({ ratio: 1.15 });
-    const overall = r.progress.map((p) => p.overall);
-    for (let i = 1; i < overall.length; i++) expect(overall[i]!).toBeGreaterThanOrEqual(overall[i - 1]!);
-    expect(overall.at(-1)).toBe(1);
-    expect(r.progress.at(-1)!.etaMs).toBe(0);
-    // 2 encodes × 60 s × 100 ms/s on the fake clock.
-    expect(r.report.elapsedMs).toBe(12_000);
+  it('skips calibration for two-pass codecs and for clips under 15 s', async () => {
+    expect((await run({})).report.attempts.every((a) => a.purpose !== 'calibration')).toBe(true);
+    const short = await run({}, { caps: webCaps(), probe: makeProbe({ durationSec: 10 }) });
+    expect(short.report.attempts.every((a) => a.purpose !== 'calibration')).toBe(true);
   });
-
-  it('golden: attempt log for an overshooting one-pass encoder', async () => {
-    const r = await run({ ratio: 1.2, drift: { 1: 1.1, 2: 0.97 }, rateControl: 'one-pass' });
-    const log = r.report.attempts.map((a) => `${a.kind}#${a.n} ${a.width}x${a.height}@${a.fps} req=${a.requestedVideoBitrate} bytes=${a.bytes} fits=${a.fits} kept=${a.kept}`);
-    expect(log).toMatchInlineSnapshot(`
-      [
-        "sample#1 854x480@30 req=1158636 bytes=421925 fits=true kept=false",
-        "sample#2 854x480@30 req=1158636 bytes=421925 fits=true kept=false",
-        "sample#3 854x480@30 req=1158636 bytes=421935 fits=true kept=false",
-        "encode#1 854x480@30 req=965529 bytes=10568963 fits=false kept=false",
-        "encode#2 854x480@30 req=847451 bytes=8408473 fits=true kept=false",
-        "encode#3 854x480@30 req=903490 bytes=9141636 fits=true kept=true",
-      ]
-    `);
+  it('pass-through and impossible never encode', async () => {
+    const pt = await run({}, { probe: makeProbe({ sizeBytes: 3 * MB }) });
+    expect(pt.report).toMatchObject({ status: 'passthrough', fits: true, passThrough: true, attempts: [], quality: null });
+    expect(pt.engine.passed).toBe(1);
+    expect(pt.engine.calls).toHaveLength(0);
+    const imp = await run({}, { probe: makeProbe({ durationSec: 3600 }), target: 2 * MB });
+    expect(imp.report).toMatchObject({ status: 'impossible', minimumSource: 'planned', error: { code: 'E_IMPOSSIBLE' } });
+    expect(imp.engine.calls).toHaveLength(0);
   });
+  it('unsupported input and engine errors become reports', async () => {
+    const noVideo = await run({}, { probe: { ...makeProbe(), video: null } });
+    expect(noVideo.report).toMatchObject({ status: 'unsupported', error: { code: 'E_UNSUPPORTED' } });
+    const boom = await run({ failOn: { call: 1, error: new Error('encoder exploded') } });
+    expect(boom.report).toMatchObject({ status: 'error', error: { code: 'E_ENCODE', message: 'encoder exploded' } });
+  });
+  it('progress is monotonic and ends at 1 with eta 0', async () => {
+    const r = await run({ ratio: 1.15 }, { caps: webCaps() });
+    const o = r.progress.map((p) => p.overall);
+    for (let i = 1; i < o.length; i++) expect(o[i]!).toBeGreaterThanOrEqual(o[i - 1]!);
+    expect(r.progress.at(-1)).toMatchObject({ phase: 'done', overall: 1, etaMs: 0 });
+    expect(r.progress.some((p) => p.phase === 'calibrating')).toBe(true);
+    expect(r.progress.some((p) => p.phase === 'checking')).toBe(true);
+  });
+  it('createdAt comes from the injected clock', async () => {
+    const r = await run({});
+    expect(r.report.createdAt).toBe(new Date(1_000_050).toISOString());
+  });
+  it('commit() is never called with bytes > T across 1,000 seeded random models', async () => {
+    let seed = 42;
+    const rnd = () => ((seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff);
+    const statuses: Record<string, number> = {};
+    for (let i = 0; i < 1000; i++) {
+      const model: RateModel = {
+        ratio: 0.4 + rnd() * 2.2,
+        floorBpp: rnd() < 0.3 ? rnd() * 0.3 : 0,
+        drift: { 1: 0.8 + rnd() * 0.6, 2: 0.8 + rnd() * 0.6, 3: 0.8 + rnd() * 0.6, 4: 0.8 + rnd() * 0.6 },
+        splitBytes: rnd() < 0.5,
+      };
+      const probe = makeProbe({ durationSec: 5 + rnd() * 600, fps: rnd() < 0.3 ? 60 : 30, width: rnd() < 0.5 ? 1920 : 1280, height: rnd() < 0.5 ? 1080 : 720 });
+      const r = await run(model, { probe, target: Math.round((1 + rnd() * 60) * MB), caps: rnd() < 0.5 ? testCaps() : webCaps() });
+      invariants(r);
+      statuses[r.report.status] = (statuses[r.report.status] ?? 0) + 1;
+    }
+    expect(statuses.fit).toBeGreaterThan(500);
+  }, 60_000);
 });
 
-describe('helpers', () => {
-  it('calibrationWindows: 3 windows for long clips, inside the range', () => {
-    expect(calibrationWindows(0, 60)).toEqual([
-      { start: 13.8, end: 16.2 },
-      { start: 28.8, end: 31.2 },
-      { start: 43.8, end: 46.2 },
-    ]);
-    const w = calibrationWindows(5, 12);
-    expect(w).toHaveLength(2);
-    for (const x of w) {
-      expect(x.start).toBeGreaterThanOrEqual(5);
-      expect(x.end).toBeLessThanOrEqual(17);
-    }
-  });
-  it('secantStep: proportional with one point, uses slope with two', () => {
-    expect(secantStep([{ req: 1000_000, act: 1100_000 }], 1000_000).next).toBe(909_090);
-    const s = secantStep(
-      [
-        { req: 1000_000, act: 1200_000 },
-        { req: 800_000, act: 1100_000 },
-      ],
-      1000_000,
-    );
-    expect(s.slope).toBeCloseTo(0.39, 2);
-    expect(s.next).toBeLessThan(800_000);
+describe('state machine is pure', () => {
+  it('nextStep/applyResult never mutate their input', () => {
+    const probe = makeProbe();
+    const caps = testCaps();
+    const p = plan(probe, { bytes: 10 * MB, label: 'x' }, {}, caps);
+    const s0 = initFitState(probe, { bytes: 10 * MB, label: 'x' }, {}, p, caps);
+    const snap = JSON.stringify(s0);
+    const step = nextStep(s0);
+    expect(step.kind).toBe('encode');
+    const s1 = applyResult(s0, step, { bytes: 11 * MB, elapsedMs: 1 });
+    expect(JSON.stringify(s0)).toBe(snap);
+    expect(s1.attempts).toHaveLength(1);
+    expect(s1.margin).toBeCloseTo(0.04);
+    const step2 = nextStep(s1);
+    expect(step2.kind === 'encode' && step2.plan.video.bitrate).toBeLessThan(step.kind === 'encode' ? step.plan.video.bitrate : 0);
   });
 });

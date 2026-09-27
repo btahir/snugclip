@@ -20,9 +20,14 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
-    "typecheck": "tsc -p tsconfig.build.json --noEmit && tsc -p tsconfig.json"
+    "typecheck": "tsc -p tsconfig.build.json --noEmit && tsc -p tsconfig.json",
+    "test": "vitest run --root ../.. --project core"
   },
   "devDependencies": {
     "@types/node": "^24.0.0"
+  },
+  "dependencies": {
+    "ssim.js": "^3.5.0",
+    "zod": "^4.6.5"
   }
 }

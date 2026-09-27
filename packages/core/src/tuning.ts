@@ -1,73 +1,63 @@
-// Every number the planner and fit loop depend on, in one place. PLAN.md is the authority
-// for these values; change them here and rerun the golden tests.
-import type { VideoCodec } from './types.js';
+// Every number the planner and fit loop depend on (PLAN §4). Change them here, then rerun
+// the goldens with `-u` after a reviewed PLAN change.
+import type { VideoCodecId } from './types.js';
 
 export const TUNING = {
-  /** First-attempt aim: this fraction of the target. */
-  goalFill: 0.97,
-  /** An attempt that fits and uses at least this fraction of the target is accepted. */
-  acceptFill: 0.9,
-  /** After each overshoot the aim drops by this much (fraction of target)... */
-  overshootBackoff: 0.03,
-  /** ...but never below this fraction. */
-  minGoalFill: 0.8,
-  /** Maximum full encodes per file (calibration samples not counted). */
-  maxAttempts: 6,
+  /** Codec efficiency relative to H.264 (PLAN §4: HEVC 0.60 because WebCodecs HEVC is hardware). */
+  k: { h264: 1, vp9: 0.7, hevc: 0.6, av1: 0.55 } satisfies Record<VideoCodecId, number>,
+  /** H.264-equivalent bits per pixel per frame. */
+  bppGood: 0.08,
+  bppFloor: 0.04,
+  bppCeiling: 0.2,
+  /** Cap relative to the source video bitrate. */
+  sourceBitrateFactor: 1.1,
 
-  /** Container overhead model: fixed bytes plus bytes per sample (video frame or audio frame). */
   overhead: {
-    mp4: { fixed: 4096, perSample: 10 },
-    webm: { fixed: 4096, perSample: 12 },
+    mp4: { fixed: 16384, perVideo: 12, perAudio: 6 },
+    webm: { fixed: 8192, perVideo: 16, perAudio: 12 },
   },
-
-  /** Bits-per-pixel-per-frame the planner aims for on H.264; other codecs scale by `codecEfficiency`. */
-  targetBpp: 0.08,
-  /** Below this bpp a rung looks broken; the planner drops a rung or refuses. */
-  floorBpp: 0.04,
-  /**
-   * Above this bpp extra bits buy nothing visible; the planner caps the video bitrate here
-   * (and at 1.2× the source video bitrate) and aims under the target instead of padding.
-   */
-  maxBpp: 0.25,
-  /** Cap relative to the source video bitrate, when known. */
-  maxSourceBitrateFactor: 1.2,
-  /** Multiplier on the bpp targets per codec (lower = more efficient). */
-  codecEfficiency: { h264: 1, hevc: 0.55, av1: 0.55, vp9: 0.65 } satisfies Record<VideoCodec, number>,
-
-  /** Resolution rungs by shorter side (the "p" number). */
-  rungs: [2160, 1440, 1080, 720, 540, 480, 360, 240],
-  /** Frame-rate cap in `auto` mode. */
-  maxAutoFps: 60,
-  /** In `auto`, frame rates above this are halved (60→30, 50→25) before resolution drops. */
-  fpsDropAbove: 30,
-
-  /** Audio bitrate ladder in bits/s, highest first. */
-  audioLadder: [128_000, 96_000, 64_000, 48_000, 32_000, 24_000],
-  /** Audio gets at most this share of the total bitrate budget. */
+  /** Audio bytes are padded by this factor (container interleaving, VBR drift). */
+  audioPad: 1.03,
+  audioLadder: { aac: [128, 96, 64, 48, 32, 24], opus: [96, 64, 48, 32, 24, 16] },
+  /** Audio gets at most this share of the total kbps. */
   audioShare: 0.12,
-  /** Mono sources are capped at this audio bitrate. */
-  monoAudioCap: 64_000,
+  /** At or below this kbps audio goes mono. */
+  monoAtOrBelow: { aac: 48, opus: 32 },
+  /** Copy the source audio when its bitrate ≤ this × the chosen rung. */
+  copyFactor: 1.1,
 
-  /** VBV: peak = bitrate × maxrateFactor, buffer = bitrate × bufsizeSeconds. */
-  maxrateFactor: 1.5,
-  bufsizeSeconds: 2,
+  /** Short-side rungs; the source (or cap) comes first, then every smaller rung. */
+  rungs: [2160, 1440, 1080, 720, 540, 480, 360, 240],
+  /** Frame rates above this are halved (or set to 30) before any resolution drop. */
+  fpsDropAbove: 30.5,
+  /** Extension: auto mode never starts above this fps (120 fps phone clips → 60). */
+  maxAutoFps: 60,
+  /** Extra fps steps at the lowest rung only. */
+  bottomFpsSteps: [24, 20, 15],
+  minFps: 15,
+  keyframeSec: { A: 2, B: 5 },
 
-  /** Calibration: sample count and length. */
-  calibration: {
-    minDurationAuto: 12,
-    minDurationOn: 6,
-    sampleSec: { min: 2, max: 4, fraction: 0.04 },
-    /** Measured/requested ratio clamp. */
-    ratioClamp: [0.3, 3] as const,
-  },
+  calibration: { minDuration: 15, len: { fraction: 0.04, min: 2, max: 4 }, ratioClamp: [0.5, 2] as const, vbr1Clamp: [0.5, 1.25] as const },
+  complexity: { low: 0.97, medium: 0.93 },
+  /** Rung probe during calibration: when the sample SSIM is below this. */
+  rungProbeBelow: 0.9,
 
-  /** Secant correction: slope clamp and per-step change clamp. */
-  secant: { minSlope: 0.2, maxSlope: 2, maxStepDown: 0.4, maxStepUp: 2.5 },
+  secant: { slopeClamp: [0.5, 1.5] as const },
+  /** Margin step after each overshoot, and its cap. */
+  marginStep: 0.02,
+  marginCap: 0.12,
+  rescueMargin: 0.1,
+  acceptFill: 0.9,
+  /** Floor detection: slope below this on an overshoot, or measured > factor × requested below floor bpp. */
+  floorSlope: 0.3,
+  floorOvershootFactor: 1.5,
+  measuredMinPad: 1.05,
 
-  /** Quality: frames compared and the analysis resolution cap (shorter side). */
-  quality: { frames: 10, maxShortSide: 720 },
-  /** SSIM thresholds for the plain-words verdict. */
-  verdict: { great: 0.95, softer: 0.9 },
+  maxAttempts: { twoPass: 3, onePass: 4, limit: 8 },
+  stallMs: { web: 20_000, ffmpeg: 60_000 },
+
+  quality: { frames: 10, maxEvalShortSide: 720 },
+  verdict: { great: { mean: 0.95, min: 0.9 }, softer: { mean: 0.88, min: 0.8 } },
+  /** Progress weights. */
+  progress: { calibration: 0.1, checking: 0.04 },
 } as const;
-
-export type Tuning = typeof TUNING;

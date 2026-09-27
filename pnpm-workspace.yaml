@@ -1,3 +1,11 @@
 packages:
   - packages/*
   - apps/*
+
+# Build scripts allowed to run on install (pnpm 11 asks explicitly).
+allowBuilds:
+  esbuild: true
+
+# Next.js pulls sharp, whose libvips binaries are LGPL-3.0; a static export needs no image optimiser.
+ignoredOptionalDependencies:
+  - sharp

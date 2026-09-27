@@ -8,6 +8,8 @@ import { execFileSync } from 'node:child_process';
 const ALLOWED = [
   'MIT', 'MIT-0', 'Apache-2.0', 'BSD-2-Clause', 'BSD-3-Clause', 'BSD', 'ISC', 'MPL-2.0', '0BSD',
   'CC0-1.0', 'Unlicense', 'BlueOak-1.0.0', 'Python-2.0', 'CC-BY-4.0',
+  // Self-hosted fonts (PLAN §10: fonts must be OFL or MIT).
+  'OFL-1.1',
 ];
 // LGPL is allowed only for the separately loaded AAC encoder WASM (BRIEF: Firefox AAC strategy).
 const LGPL_EXCEPTIONS = new Set(['@mediabunny/aac-encoder']);
